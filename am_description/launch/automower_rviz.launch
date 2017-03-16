@@ -1,0 +1,17 @@
+<launch>
+  <!-- urdf xml robot description loaded on the Parameter Server-->
+  <param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower_awd.urdf.xacro'" />
+ 
+  <!-- source that publishes the joint positions as a sensor_msgs/JointState -->
+  <param name="use_gui" value="true"/>
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+  <!-- robot visualization -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find am_description)/rviz/urdf.rviz" required="true" /> 
+ 
+  <!-- publish all the frames to TF -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+    <param name="publish_frequency" value="50"/> <!-- Hz -->
+  </node>
+
+</launch>

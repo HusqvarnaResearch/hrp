@@ -1,0 +1,196 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="lawn">
+    <static>true</static>
+    <link name="garden">
+      <pose>0 0 0.01 0 0 0</pose>
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>102.4 102.4</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <mu>100</mu>
+                <mu2>100</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+               
+       <visual name="lawn1_A0_visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>102.4 102.4</size>
+          </plane>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://lawn1/materials/scripts/</uri>
+            <uri>model://lawn1/materials/textures/</uri>
+            <name>Husqvarna/lawn1_A0</name>
+          </script>
+        </material>
+        </visual>
+        
+         <visual name="lawn1_G1_visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>102.4 102.4</size>
+          </plane>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://lawn1/materials/scripts/</uri>
+            <uri>model://lawn1/materials/textures/</uri>
+            <name>Husqvarna/lawn1_G1</name>
+          </script>
+        </material>
+        </visual>
+        
+      <visual name="lawn1_F_visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>102.4 102.4</size>
+          </plane>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://lawn1/materials/scripts/</uri>
+            <uri>model://lawn1/materials/textures/</uri>
+            <name>Husqvarna/lawn1_F</name>
+          </script>
+        </material>
+      </visual>
+        
+   	  <visual name="lawn1_N_visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>102.4 102.4</size>
+          </plane>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://lawn1/materials/scripts/</uri>
+            <uri>model://lawn1/materials/textures/</uri>
+            <name>Husqvarna/lawn1_N</name>
+          </script>
+        </material>
+        </visual>
+              
+	  <collision name="slope_collision">
+	    <geometry>
+		  <heightmap>
+		    <uri>model://lawn1/materials/textures/slope.png</uri>
+<!--
+		    <size>50 50 2.5</size>
+-->
+			 <size>80 80 5</size>
+		    <pos>0 0 0</pos>
+		  </heightmap>
+	    </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>100</mu>
+              <mu2>100</mu2>
+            </ode>
+          </friction>
+        </surface>
+	  </collision>
+
+	  <visual name="slope_visual">
+	    <geometry>
+	   	  <heightmap>
+		    <use_terrain_paging>false</use_terrain_paging>
+		    <texture>
+			  <diffuse>file://media/materials/textures/dirt_diffusespecular.png</diffuse>
+			  <normal>file://media/materials/textures/flat_normal.png</normal>
+			  <size>1</size>
+		    </texture>
+		    <texture>
+			  <diffuse>file://media/materials/textures/grass_diffusespecular.png</diffuse>
+			  <normal>file://media/materials/textures/flat_normal.png</normal>
+			  <size>1</size>
+		    </texture>
+		    <uri>model://lawn1/materials/textures/slope.png</uri>
+<!--
+		    <size>100 100 1.5</size>
+-->
+			 <size>80 80 5</size>
+		    <pos>0 0 0</pos>
+		  </heightmap>
+	    </geometry>
+	  </visual>
+    
+    
+        <collision name="cs_tower_collision">
+		  <pose>10.45 0.05 0.0 0 0 0</pose>
+          <geometry>
+			<box>
+				<size>0.2 0.1 0.3</size>
+            </box>          
+          </geometry>
+        </collision>
+
+        <visual name="cs_tower_visual">
+		  <pose>10.45 0.05 0.0 0 0 0</pose>
+          <geometry>
+			<box>
+				<size>0.2 0.1 0.3</size>
+            </box>          
+          </geometry>
+        </visual>
+
+
+        <collision name="in_cs">
+		  <pose>10.45 0.10 0.0 0 0 0</pose>
+          <geometry>
+			<box>
+				<size>0.1 0.05 0.3</size>
+            </box>          
+          </geometry>
+        </collision>
+    </link>
+    
+	    
+    <plugin name="am_gazebo_wire" filename="libam_gazebo_wire.so">
+    	<loop>
+    		<name>A0</name>
+			<wireMapName>model://lawn1/materials/textures/lawn1_A0.bin</wireMapName>
+			<mapWidth>102.4</mapWidth>
+			<mapHeight>102.4</mapHeight>
+		</loop>
+		<loop>
+			<name>G1</name>
+			<wireMapName>model://lawn1/materials/textures/lawn1_G1.bin</wireMapName>
+			<mapWidth>102.4</mapWidth>
+			<mapHeight>102.4</mapHeight>
+		</loop>
+		<loop>
+			<name>F</name>
+			<wireMapName>model://lawn1/materials/textures/lawn1_F.bin</wireMapName>
+			<mapWidth>102.4</mapWidth>
+			<mapHeight>102.4</mapHeight>
+		</loop>
+		<loop>
+			<name>N</name>
+			<wireMapName>model://lawn1/materials/textures/lawn1_N.bin</wireMapName>
+			<mapWidth>102.4</mapWidth>
+			<mapHeight>102.4</mapHeight>
+		</loop>
+	</plugin>
+  </model>
+  
+</sdf>

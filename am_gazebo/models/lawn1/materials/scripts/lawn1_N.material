@@ -1,0 +1,21 @@
+material Husqvarna/lawn1_N
+{
+  technique
+  {
+    pass
+    {
+      ambient 1.0 1.0 1.0 1.0
+      diffuse 1.0 1.0 1.0 1.0
+      scene_blend src_colour one
+      depth_write off
+      lighting off
+
+      texture_unit
+      {
+        scale 1.0 1.0
+        texture lawn1_N.png
+        filtering trilinear
+      }
+    }
+  }
+}

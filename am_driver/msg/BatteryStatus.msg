@@ -1,0 +1,5 @@
+Header header
+float32 batteryAVoltage
+float32 batteryACurrent
+float32 batteryBVoltage
+float32 batteryBCurrent

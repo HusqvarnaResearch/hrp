@@ -1,0 +1,26 @@
+<launch>
+  <!-- urdf xml robot description loaded on the Parameter Server-->
+  <param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
+
+  
+
+  <!-- Start the am_driver -->
+  <node name="am_driver_safe" pkg="am_driver_safe" type="am_driver_safe_node" output="screen">
+    <param name="serialPort" value="/dev/ttyO4" type="str" />
+    <param name="printCharge" value="false"/>
+    <param name="publishTf" value="1"/>
+    <param name="serialLog" value="false"/>
+    <param name="hil" value="0"/>
+    <param name="jsonFile" value="$(find am_driver_safe)/config/automower_hrp.json" type="string" />
+  </node>
+
+  <!-- source that publishes the joint positions as a sensor_msgs/JointState -->
+  <param name="use_gui" value="false"/>
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+  <!-- publish all the frames to TF -->
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+    <param name="publish_frequency" value="40"/> <!-- Hz -->
+  </node>
+
+</launch>

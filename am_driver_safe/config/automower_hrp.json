@@ -1,0 +1,1132 @@
+{
+  "header": {},
+  "types": [
+    {
+      "name": "tILoopSamplerLoops",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "LOOPSAMPLER_LOOP_A",
+          "description": "A",
+          "value": "0"
+        },
+        {
+          "key": "LOOPSAMPLER_LOOP_F",
+          "description": "F",
+          "value": "1"
+        },
+        {
+          "key": "LOOPSAMPLER_LOOP_N",
+          "description": "N",
+          "value": "2"
+        },
+        {
+          "key": "LOOPSAMPLER_LOOP_G1",
+          "description": "Guide 1",
+          "value": "3"
+        },
+        {
+          "key": "LOOPSAMPLER_LOOP_G2",
+          "description": "Guide 2",
+          "value": "4"
+        },
+        {
+          "key": "LOOPSAMPLER_LOOP_G3",
+          "description": "Guide 3",
+          "value": "5"
+        },
+        {
+          "key": "LOOPSAMPLER_NUMBER_OF_LOOPS",
+          "description": "",
+          "value": "6"
+        }
+      ]
+    },
+    {
+      "name": "tIMowerApp_MowerMode",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "IMOWERAPP_MODE_AUTO",
+          "description": "Auto",
+          "value": "0"
+        },
+        {
+          "key": "IMOWERAPP_MODE_MANUAL",
+          "description": "Manual",
+          "value": "1"
+        },
+        {
+          "key": "IMOWERAPP_MODE_HOME",
+          "description": "Home",
+          "value": "2"
+        },
+        {
+          "key": "IMOWERAPP_MODE_DEMO",
+          "description": "Demo",
+          "value": "3"
+        }
+      ]
+    },
+    {
+      "name": "tIMowerApp_State",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "IMOWERAPP_STATE_OFF",
+          "description": "Off",
+          "value": "0"
+        },
+        {
+          "key": "IMOWERAPP_STATE_WAIT_FOR_SAFETYPIN",
+          "description": "Wait for safety pin",
+          "value": "1"
+        },
+        {
+          "key": "IMOWERAPP_STATE_STOPPED",
+          "description": "Stopped",
+          "value": "2"
+        },
+        {
+          "key": "IMOWERAPP_STATE_FATAL_ERROR",
+          "description": "Fatal error",
+          "value": "3"
+        },
+        {
+          "key": "IMOWERAPP_STATE_PENDING_START",
+          "description": "Pending start",
+          "value": "4"
+        },
+        {
+          "key": "IMOWERAPP_STATE_PAUSED",
+          "description": "Paused",
+          "value": "5"
+        },
+        {
+          "key": "IMOWERAPP_STATE_IN_OPERATION",
+          "description": "In operation",
+          "value": "6"
+        },
+        {
+          "key": "IMOWERAPP_STATE_RESTRICTED",
+          "description": "Restricted",
+          "value": "7"
+        },
+        {
+          "key": "IMOWERAPP_STATE_ERROR",
+          "description": "Error",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "name": "tReturn",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "OK",
+          "description": "OK",
+          "value": "0"
+        },
+        {
+          "key": "E_UNDEFINED",
+          "description": "Undefined error",
+          "value": "1"
+        },
+        {
+          "key": "E_INVALID_VALUE",
+          "description": "Invalid value in argument",
+          "value": "2"
+        },
+        {
+          "key": "E_TIMEOUT",
+          "description": "Unexpected timeout",
+          "value": "3"
+        },
+        {
+          "key": "E_OVERFLOW",
+          "description": "Overflow in data communication",
+          "value": "4"
+        },
+        {
+          "key": "E_OUT_OF_MEMORY",
+          "description": "No memory buffer available in pool",
+          "value": "5"
+        },
+        {
+          "key": "W_UNDEFINED",
+          "description": "Undefined warning",
+          "value": "64"
+        },
+        {
+          "key": "W_BUSY",
+          "description": "Warning: Busy. May need an action",
+          "value": "65"
+        },
+        {
+          "key": "I_UNDEFINED",
+          "description": "Undefined info",
+          "value": "128"
+        },
+        {
+          "key": "I_BUSY",
+          "description": "Info: Busy. No action needed",
+          "value": "129"
+        },
+        {
+          "key": "I_QUEUED",
+          "description": "Info: The call put in queue",
+          "value": "130"
+        }
+      ]
+    },
+    {
+      "name": "tDeviceTypeGroup",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "DEVICE_TYPE_GROUP_UNDEFINED",
+          "description": "",
+          "value": "0"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_GPS_BOARD",
+          "description": "",
+          "value": "1"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_MOWER",
+          "description": "",
+          "value": "10"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_MMI",
+          "description": "",
+          "value": "11"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_CS",
+          "description": "",
+          "value": "12"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_ULTRASONIC",
+          "description": "",
+          "value": "13"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_MOWER_BOOT",
+          "description": "",
+          "value": "14"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_MOWER_LOADER",
+          "description": "",
+          "value": "15"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_COM_UNIT",
+          "description": "",
+          "value": "16"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_COM_UNIT_BOOT",
+          "description": "",
+          "value": "17"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_MAIN_BOARD",
+          "description": "",
+          "value": "20"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_MMI_BOARD",
+          "description": "",
+          "value": "21"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_CS_BOARD",
+          "description": "",
+          "value": "22"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_US_BOARD",
+          "description": "",
+          "value": "23"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_COM_BOARD",
+          "description": "",
+          "value": "24"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_SW_MOWER",
+          "description": "",
+          "value": "31"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_SW_MMI",
+          "description": "",
+          "value": "32"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_SW_CS",
+          "description": "",
+          "value": "33"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_SW_START",
+          "description": "",
+          "value": "34"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_SW_ULTRASONIC",
+          "description": "",
+          "value": "35"
+        },
+        {
+          "key": "DEVICE_TYPE_GROUP_SW_COM",
+          "description": "",
+          "value": "36"
+        }
+      ]
+    },
+    {
+      "name": "tMowerDeviceType",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "MOWER_DEVICE_TYPE_UNDEFINED",
+          "description": "",
+          "value": "0"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_B",
+          "description": "",
+          "value": "1"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_C",
+          "description": "",
+          "value": "2"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_D",
+          "description": "",
+          "value": "3"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_E",
+          "description": "",
+          "value": "4"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_F",
+          "description": "",
+          "value": "5"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_G",
+          "description": "",
+          "value": "6"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_H",
+          "description": "",
+          "value": "7"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_I",
+          "description": "",
+          "value": "8"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_J",
+          "description": "",
+          "value": "9"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_K",
+          "description": "",
+          "value": "10"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_L",
+          "description": "",
+          "value": "11"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_M",
+          "description": "",
+          "value": "12"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_N",
+          "description": "",
+          "value": "13"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_O",
+          "description": "",
+          "value": "14"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_P",
+          "description": "",
+          "value": "15"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_Q",
+          "description": "",
+          "value": "16"
+        },
+        {
+          "key": "MOWER_DEVICE_TYPE_NO_MORE",
+          "description": "",
+          "value": "17"
+        }
+      ]
+    },
+    {
+      "name": "tMowerVariantType",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "MOWER_VARIANT_TYPE_UNDEFINED",
+          "description": "",
+          "value": "255"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_ORG",
+          "description": "",
+          "value": "0"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_B",
+          "description": "",
+          "value": "1"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_C",
+          "description": "",
+          "value": "2"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_D",
+          "description": "",
+          "value": "3"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_E",
+          "description": "",
+          "value": "4"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_F",
+          "description": "",
+          "value": "5"
+        },
+        {
+          "key": "MOWER_VARIANT_TYPE_NO_MORE",
+          "description": "",
+          "value": "6"
+        }
+      ]
+    }
+  ],
+  "methods": [
+    {
+      "elementType": "function",
+      "family": "DeviceInformation",
+      "command": "GetDeviceIdentification",
+      "tags": [
+        "deviceInfo"
+      ],
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "deviceTypeGroup",
+          "type": "tDeviceTypeGroup"
+        },
+        {
+          "name": "mowerDeviceType",
+          "type": "tMowerDeviceType"
+        },
+        {
+          "name": "mowerSerialNo",
+          "type": "uint32"
+        },
+        {
+          "name": "mowerVariantType",
+          "type": "tMowerVariantType"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "22"
+        },
+        {
+          "key": "subCmd",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "command": "GetWheelMotorData",
+      "elementType": "IRS",
+      "family": "RealTimeData",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "powerleft",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "speedleft",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "currentleft",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "powerright",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "speedright",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "currentright",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "difference",
+          "type": "sint16",
+          "length": "2"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "20"
+        },
+        {
+          "key": "subCmd",
+          "value": "2"
+        }
+      ]
+    },
+
+    {
+      "elementType": "function",
+      "family": "Wheels",
+      "command": "GetSpeed",
+      "inParams": [
+        {
+          "name": "index",
+          "type": "uint8"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "speed",
+          "type": "sint16"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4336"
+        },
+        {
+          "key": "subCmd",
+          "value": "6"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Wheels",
+      "command": "GetRotationCounter",
+      "inParams": [
+        {
+          "name": "index",
+          "type": "uint8"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "counter",
+          "type": "sint32"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4336"
+        },
+        {
+          "key": "subCmd",
+          "value": "5"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Collision",
+      "command": "GetStatus",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "collisionFrontCenter",
+          "type": "bool"
+        },
+        {
+          "name": "collisionRearRight",
+          "type": "bool"
+        },
+        {
+          "name": "collisionRearLeft",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4166"
+        },
+        {
+          "key": "subCmd",
+          "value": "2"
+        }
+      ]
+    },
+
+    {
+      "elementType": "function",
+      "family": "Charger",
+      "command": "IsChargingEnabled",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "isChargingEnabled",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4486"
+        },
+        {
+          "key": "subCmd",
+          "value": "3"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "LiftSensor",
+      "command": "IsActivated",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "isActivated",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4476"
+        },
+        {
+          "key": "subCmd",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "command": "GetBatteryData",
+      "elementType": "IRS",
+      "family": "RealTimeData",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "batavoltage",
+          "type": "uint16",
+          "length": "2"
+        },
+        {
+          "name": "bataenergylevel",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batacurrent",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batatemp",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batacapacity",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batbvoltage",
+          "type": "uint16",
+          "length": "2"
+        },
+        {
+          "name": "batbenergylevel",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batbcurrent",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batbtemp",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "batbcapacity",
+          "type": "sint16",
+          "length": "2"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "20"
+        },
+        {
+          "key": "subCmd",
+          "value": "1"
+        }
+      ]
+    },
+     {
+      "elementType": "function",
+      "family": "CurrentStatus",
+      "command": "GetStatusKeepAlive",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "mainState",
+          "type": "uint8"
+        },
+        {
+          "name": "subState",
+          "type": "uint8"
+        },
+        {
+          "name": "mode",
+          "type": "uint8"
+        },
+        {
+          "name": "timerStatusAndOpMode",
+          "type": "uint8"
+        },
+        {
+          "name": "hostMessage",
+          "type": "uint16"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "18"
+        },
+        {
+          "key": "subCmd",
+          "value": "0x80"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "LoopSampler",
+      "command": "GetLoopSignalMaster",
+      "inParams": [
+        {
+          "name": "loop",
+          "type": "tILoopSamplerLoops"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "signalLevel",
+          "type": "sint16"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4480"
+        },
+        {
+          "key": "subCmd",
+          "value": "3"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "StopButton",
+      "command": "IsActivated",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "isActivated",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4464"
+        },
+        {
+          "key": "subCmd",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Wheels",
+      "command": "PowerOff",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4336"
+        },
+        {
+          "key": "subCmd",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Wheels",
+      "command": "PowerOn",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4336"
+        },
+        {
+          "key": "subCmd",
+          "value": "9"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "HardwareControl",
+      "command": "WheelMotorsPower",
+      "inParams": [
+        {
+          "name": "leftWheelMotorPower",
+          "type": "sint16"
+        },
+        {
+          "name": "rightWheelMotorPower",
+          "type": "sint16"
+        }
+      ],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "16"
+        },
+        {
+          "key": "subCmd",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "MowerApp",
+      "command": "SetMode",
+      "inParams": [
+        {
+          "name": "modeOfOperation",
+          "type": "tIMowerApp_MowerMode"
+        }
+      ],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4586"
+        },
+        {
+          "key": "subCmd",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "SystemSettings",
+      "command": "GetLoopDetection",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "loopDetection",
+          "type": "uint8"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "2"
+        },
+        {
+          "key": "subCmd",
+          "value": "0x08"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "MowerApp",
+      "command": "GetMode",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "modeOfOperation",
+          "type": "tIMowerApp_MowerMode"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4586"
+        },
+        {
+          "key": "subCmd",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "MowerApp",
+      "command": "GetState",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "mowerState",
+          "type": "tIMowerApp_State"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4586"
+        },
+        {
+          "key": "subCmd",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "BladeMotor",
+      "command": "Brake",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4362"
+        },
+        {
+          "key": "subCmd",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "BladeMotor",
+      "command": "Run",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4362"
+        },
+        {
+          "key": "subCmd",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "BladeMotor",
+      "command": "On",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4362"
+        },
+        {
+          "key": "subCmd",
+          "value": "9"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "BladeMotor",
+      "command": "Off",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4362"
+        },
+        {
+          "key": "subCmd",
+          "value": "10"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "MowerApp",
+      "command": "StartTrigger",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4586"
+        },
+        {
+          "key": "subCmd",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "MowerApp",
+      "command": "Pause",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4586"
+        },
+        {
+          "key": "subCmd",
+          "value": "5"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "SystemSettings",
+      "command": "SetLoopDetection",
+      "inParams": [
+        {
+          "name": "loopDetection",
+          "type": "uint8"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "loopDetection",
+          "type": "uint8"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "2"
+        },
+        {
+          "key": "subCmd",
+          "value": "0x88"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "HeightMotor",
+      "command": "SetHeight",
+      "inParams": [
+        {
+          "name": "height",
+          "type": "uint8"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "retVal",
+          "type": "tReturn"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4488"
+        },
+        {
+          "key": "subCmd",
+          "value": "8"
+        }
+      ]
+    }
+  ]
+}
