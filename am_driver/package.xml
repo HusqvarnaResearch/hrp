@@ -54,6 +54,7 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>message_runtime</run_depend>
+  <run_depend>python-pygame</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

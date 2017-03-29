@@ -46,6 +46,7 @@
   <run_depend>robot_state_publisher</run_depend>
   <run_depend>urdf</run_depend>
   <run_depend>xacro</run_depend>
+  <run_depend>hector_gazebo_plugins</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
