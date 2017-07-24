@@ -1,0 +1,12 @@
+# Define the goal
+string name
+string uid
+string parameters
+---
+# Define the result
+int32 success
+string description
+string plan
+---
+# Define a feedback message
+float32 complete

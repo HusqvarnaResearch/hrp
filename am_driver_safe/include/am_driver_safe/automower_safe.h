@@ -1,16 +1,19 @@
 /*
  * Copyright (c) 2014 - Husqvarna AB, part of HusqvarnaGroup
  * Author: Stefan Grufman
+ *  	   Kent Askenmalm
  *
  */
 
-#ifndef AUTOMOWER_H
-#define AUTOMOWER_H
+#ifndef AUTOMOWER_SAFE_H
+#define AUTOMOWER_SAFE_H
 
 #include <ros/ros.h>
 #include <boost/shared_ptr.hpp>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/PointStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
 #include <am_driver/Loop.h>
@@ -22,8 +25,16 @@
 #include <am_driver/WheelEncoder.h>
 #include <am_driver/WheelCurrent.h>
 #include <am_driver_safe/TifCmd.h>
+#include <sensor_msgs/NavSatFix.h>
 
 #include <sys/select.h>
+
+
+#include <hq_decision_making/hq_FSM.h>
+#include <hq_decision_making/hq_ROSTask.h>
+#include <hq_decision_making/hq_DecisionMaking.h>
+
+
 
 
 #ifdef __cplusplus
@@ -59,6 +70,15 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
+
+
+#define	AM_STATE_UNDEFINED     0x0
+#define	AM_STATE_IDLE          0x1
+#define	AM_STATE_INIT          0x2
+#define	AM_STATE_MANUAL        0x3
+#define	AM_STATE_RANDOM        0x4
+#define	AM_STATE_PARK          0x5
+
 
 
 namespace Husqvarna
@@ -112,18 +132,42 @@ private:
 };
 
 
+
+
+
+
 class AutomowerSafe
 {
 public:
-    AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate);
+    AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate, decision_making::RosEventQueue* eq);
     ~AutomowerSafe();
 
     bool setup();
     bool update(ros::Duration dt);
+    
+    decision_making::RosEventQueue* eventQueue;
+
+    bool m_regulatingActive;
+    
+
+
+	void pauseMower();
+	void startMower();
+	void setParkMode();
+	void setAutoMode();
+	void cutDiscHandling();
+	void cutDiscOff();
+    void stopWheels();
+	void loopDetectionHandling();
+	void cuttingHeightHandling();
+	
+	void newControlMainState(int aNewState);
+	
 
 private:
     void velocityCallback(const geometry_msgs::Twist::ConstPtr& vel);
     void modeCallback(const std_msgs::UInt16::ConstPtr& msg);
+    
     std::string resultToString(hcp_tResult result);
     bool initAutomowerBoard();
     bool sendMessage(const char* msg, int len, hcp_tResult& result);
@@ -131,13 +175,15 @@ private:
     void regulateVelocity();
     bool getRealTimeData();
     bool getSensorData();
+    bool getPitchAndRoll();
+    bool getGPSData();
+    
 
     bool executeTifCommand(am_driver_safe::TifCmd::Request& req,
                                       am_driver_safe::TifCmd::Response& res);
 
     double regulatePid(double current_vel, double wanted_vel);
     bool doSerialComTest();
-    void stopWheels();
 
     std::string loadJsonModel(std::string fileName);
 
@@ -153,7 +199,6 @@ private:
     ros::Publisher pose_pub;
     ros::Publisher odom_pub;
 
-    ros::WallTime last_command_time;
 
     ros::Publisher loop_pub;
     ros::Publisher sensorStatus_pub;
@@ -163,7 +208,9 @@ private:
     ros::Publisher current_pub;
     ros::Publisher wheelPower_pub;
 
-    ros::Subscriber imuResetSub;
+	ros::Publisher navSatFix_pub;
+	
+
 
     tf::TransformBroadcaster br;
 
@@ -212,21 +259,18 @@ private:
     // Automower status
     am_driver::Loop loop;
     am_driver::SensorStatus sensorStatus;
-    unsigned short mode;
-    unsigned short requestedMode;
+    unsigned short requestedState;
+    
+    
     am_driver::WheelEncoder encoder;
     am_driver::WheelCurrent wheelCurrent;
     am_driver::WheelPower wheelPower;
 
     
-    bool active;
-
 
     int publishTf;
     int velocityRegulator;
 
-    // "bonnafusing" (i.e. simple fusing)
-    double imuOffset;
 
     // Cutting disc
     bool cuttingDiscOn;
@@ -253,30 +297,54 @@ private:
     PidRegulator rightWheelPid;
 
     ros::Time nextAutomowerInitTime;
+    double lastRateCheckTime;
     int lastComtestWheelMotorPower;
     double startTime;
 
 
     // Battery
     int batteryCheckCounter;
+    int batteryCheckCounterLimit;
     bool printCharge;
     am_driver::BatteryStatus batteryStatus;
 
     // Sensor
     int sensorCheckCounter;
-
+	int sensorCheckCounterLimit;
+    
     // Loopdata
     int loopSensorCheckCounter;
+    int loopSensorCheckCounterLimit;
 
 	
 	// Mode and state
 	int stateCheckCounter;
-
-    // To keep disc off in random mode
-    int sendStopCuttingDiscCounter;
+    int stateCheckCounterLimit;
+   
+	
     
     // UserStop
     bool userStop;
+    
+    // Accelerometer
+    int pitchRollCheckCounter;
+    int pitchRollCheckCounterLimit;
+    bool   m_PitchAndRollFromAccelerometer;
+    double m_pitch;
+    double m_roll;
+    
+  
+    
+	// GPS
+    int GPSCheckCounter;
+    int GPSCheckCounterLimit;
+	sensor_msgs::NavSatFix      m_navSatFix_msg;
+	bool						m_publishGPS;
+
+
+    int rateCalcCounter;
+    
+
 
 };
 

@@ -1,6 +1,7 @@
 /*
  * Copyright (c) 2014 - Husqvarna AB, part of HusqvarnaGroup
- * Author: Stefan Grufman
+ * Authors: Stefan Grufman
+ * 			Kent Askenmalm
  *
  */
 
@@ -16,30 +17,24 @@
 
 #define DEG2RAD(DEG) ((DEG) * ((M_PI) / (180.0)))
 
-#define MODE_UNDEFINED 0x0000
-#define MODE_MANUAL 0x0001
-#define MODE_RANDOM 0x0002
-#define MODE_PARK 0x0003
-#define MODE_STOPPED 0x0004
 
-// OPERATIONAL MODES (i.e. published in SensorStatus)
+// OPERATIONAL MODES (i.e. published in SensorStatus.operationalMode)
 #define AM_OP_MODE_OFFLINE (0x0000)
 #define AM_OP_MODE_CONNECTED_MANUAL (0x0001)
 #define AM_OP_MODE_CONNECTED_RANDOM (0x0002)
 
+// Serial port states
 #define AM_SP_STATE_OFFLINE (0)
 #define AM_SP_STATE_ONLINE (1)
 #define AM_SP_STATE_CONNECTED (2)
 #define AM_SP_STATE_INITIALISING (3)
 #define AM_SP_STATE_ERROR (4)
 
-#define AM_MAINBOARD_NEEDS_CONFIG (0)
-#define AM_MAINBOARD_ROS_IN_CONTROL (1)
-#define AM_MAINBOARD_HMB_IN_CONTROL (2)
-
 #define AM_POWER_INCDEC (1)
 #define AM_POWER_THRESHOLD (0.1)
 
+
+// Sensor states
 #define HVA_SS_HMB_CTRL 0x0001
 #define HVA_SS_OUTSIDE 0x0002
 #define HVA_SS_COLLISION 0x0004
@@ -52,10 +47,30 @@
 #define HVA_SS_DISC_ON 0x0200
 #define HVA_SS_LOOP_ON 0x0400
 
+// Mower internal modes
 #define IMOWERAPP_MODE_AUTO (0)
 #define IMOWERAPP_MODE_MANUAL (1)
 #define IMOWERAPP_MODE_HOME (2)
 #define IMOWERAPP_MODE_DEMO (3)
+
+
+// Mower internal states
+#define IMOWERAPP_STATE_OFF              0
+#define IMOWERAPP_STATE_WAIT_SAFETY_PIN  1
+#define IMOWERAPP_STATE_STOPPED          2
+#define IMOWERAPP_STATE_FATAL_ERROR      3
+#define IMOWERAPP_STATE_PENDING_START    4
+#define IMOWERAPP_STATE_PAUSED           5
+#define IMOWERAPP_STATE_IN_OPERATION     6
+#define IMOWERAPP_STATE_RESTRICTED       7
+#define IMOWERAPP_STATE_ERROR            8
+
+
+//#define DEBUG_LOG(X)  std::cout << X << std::endl;
+#define DEBUG_LOG(X)
+
+#define RADIANS_PER_DEGREE (3.14159/180.0)
+
 
 
 namespace Husqvarna
@@ -99,11 +114,15 @@ namespace Husqvarna
     }
     #endif
 
-AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
+
+
+
+AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate, decision_making::RosEventQueue* eq)
 {
     // Init attributes
     nh = nodeh;
     updateRate = anUpdateRate;
+    eventQueue= eq;
     lin_vel = 0.0;
     ang_vel = 0.0;
 
@@ -138,7 +157,13 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
     
     n_private.param("serialLog",serialLog , false);
     ROS_INFO("Param: serialLog: [%d]", serialLog);
-    
+
+    n_private.param("pitchAndRoll", m_PitchAndRollFromAccelerometer, false);
+    ROS_INFO("Param: pitchAndRoll: [%d]", m_PitchAndRollFromAccelerometer);
+
+	n_private.param("publishGPS", m_publishGPS, false);
+    ROS_INFO("Param: publishGPS: [%d]", m_publishGPS);
+
 
     // Setup some ROS stuff
     cmd_sub = nh.subscribe("cmd_mode", 5, &AutomowerSafe::modeCallback, this);
@@ -151,12 +176,18 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
     current_pub = nh.advertise<am_driver::WheelCurrent>("wheel_current", 1);
     wheelPower_pub = nh.advertise<am_driver::WheelPower>("wheel_power", 1);
 
-    imuResetSub = nh.subscribe("imu_reset", 1, &AutomowerSafe::imuResetCallback, this);
     velocity_sub = nh.subscribe("cmd_vel", 1, &AutomowerSafe::velocityCallback, this);
 
     loop_pub = nh.advertise<am_driver::Loop>("loop", 1);
     sensorStatus_pub = nh.advertise<am_driver::SensorStatus>("sensor_status", 1);
+     
     batStatus_pub  = nh.advertise<am_driver::BatteryStatus>("battery_status", 1);
+    
+	navSatFix_pub = nh.advertise<sensor_msgs::NavSatFix>("GPSfix", 1);
+		
+  DEBUG_LOG("BAA")
+		
+
 
     tifCommandService = nh.advertiseService("tif_command", &AutomowerSafe::executeTifCommand, this);
     ROS_INFO("Service /tif_command.");
@@ -173,8 +204,7 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
     lastLeftPulses = 0;
     lastRightPulses = 0;
     automowerInterfaceInited = false;
-    mode = MODE_MANUAL;
-    requestedMode = MODE_MANUAL;
+    requestedState = AM_STATE_MANUAL;
 
     tf::Quaternion q = tf::createQuaternionFromYaw(yaw);
     robot_pose.pose.orientation.x = q.x();
@@ -185,7 +215,6 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
     robot_pose.header.frame_id = "base_link";
     robot_pose.header.stamp = ros::Time::now();
 
-    imuOffset = 0.0;
 
     cuttingDiscOn = false;
     lastCuttingDiscOn = false;
@@ -209,14 +238,29 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
 
     power_l = 0;
     power_r = 0;
-    batteryCheckCounter = 1;
-    sensorCheckCounter = 2;
-    loopSensorCheckCounter = 3;
-    stateCheckCounter = 4;
-    sendStopCuttingDiscCounter = 0;
+    stateCheckCounter = 0;
+    sensorCheckCounter = 1;
+    loopSensorCheckCounter = 2;
+	pitchRollCheckCounter = 3;
+    batteryCheckCounter = 4;
+	GPSCheckCounter = 5;
+    
+    rateCalcCounter = 0;
+
+	
+    stateCheckCounterLimit      = updateRate/4;      // 4 times per second
+    sensorCheckCounterLimit     = updateRate/2;      // 2 times per second
+    loopSensorCheckCounterLimit = updateRate/2;      // 2 times per second
+    pitchRollCheckCounterLimit	= updateRate/2;      // 2 times per second
+    batteryCheckCounterLimit    = updateRate/1;      // 1 time per second
+    GPSCheckCounterLimit		= updateRate/1;      // 1 time   per second
+
+	
+
 
     nextAutomowerInitTime = ros::Time::now();
     startTime = ros::WallTime::now().toSec();
+    lastRateCheckTime = ros::WallTime::now().toSec();
 
     userStop = true; // Assume stopped...
 
@@ -276,9 +320,10 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
         ROS_ERROR("Could not create new Codec instance.");
     }
 
-	active = true;
+	m_regulatingActive = false;
 
     ROS_INFO("AutomowerSafe::Loaded HCP/TIF codec...let's go!");
+
 
 
 }
@@ -343,6 +388,7 @@ bool AutomowerSafe::setup()
 
     ROS_INFO("Automower::setup()");
 
+   
     // Open serial port
     serialFd = open(pSerialPort.c_str(), O_RDWR /*| O_NONBLOCK */);
     if (serialFd < 0)
@@ -429,7 +475,6 @@ void AutomowerSafe::imuResetCallback(const geometry_msgs::Pose::ConstPtr& msg)
 
 void AutomowerSafe::velocityCallback(const geometry_msgs::Twist::ConstPtr& vel)
 {
-    last_command_time = ros::WallTime::now();
     lin_vel = (double)vel->linear.x;
     ang_vel = (double)vel->angular.z;
 
@@ -450,50 +495,60 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
 
     if (msg->data == 0x90)
     {
-        requestedMode = MODE_MANUAL;
-        ROS_INFO("Manual Mode Requested");
+        requestedState = AM_STATE_MANUAL;
+        ROS_INFO("AutoMowerSafe: Manual Mode Requested");
+		eventQueue->raiseEvent("/MANUAL");
     }
     else if (msg->data == 0x91)
     {
-        requestedMode = MODE_RANDOM;
-        ROS_INFO("Random Mode Requested");
+        requestedState = AM_STATE_RANDOM;
+        ROS_INFO("AutoMowerSafe: Random Mode Requested");
+		eventQueue->raiseEvent("/RANDOM");
     }
     else if (msg->data == 0x92)
     {
         cuttingDiscOn = false;
-        ROS_INFO("Cutting Disc OFF");
+		eventQueue->raiseEvent("/CUTDISC_CHANGED");
+        ROS_INFO("AutoMowerSafe: Cutting Disc OFF");
     }
     else if (msg->data == 0x93)
     {
         cuttingDiscOn = true;
-        ROS_INFO("Cutting Disc ON");
+		eventQueue->raiseEvent("/CUTDISC_CHANGED");
+        ROS_INFO("AutoMowerSafe: Cutting Disc ON");
     }
     else if (msg->data == 0x94)
     {
         cuttingHeight = 60;
-        ROS_INFO("Cutting Height = 60mm");
+     	eventQueue->raiseEvent("/CUTTINGHEIGHT_CHANGED");
+        ROS_INFO("AutoMowerSafe: Cutting Height = 60mm");
         
     }
     else if (msg->data == 0x95)
     {
         cuttingHeight = 40;
-        ROS_INFO("Cutting Height = 40mm");
+     	eventQueue->raiseEvent("/CUTTINGHEIGHT_CHANGED");
+        ROS_INFO("AutoMowerSafe: Cutting Height = 40mm");
         
     }
     else if (msg->data == 0x100)
     {
-		requestedMode = MODE_PARK;
-        ROS_INFO("Parking");
+		requestedState = AM_STATE_PARK;
+		DEBUG_LOG(" raiseEvent PARKING")
+		eventQueue->raiseEvent("/PARKING");
+        ROS_INFO("AutoMowerSafe: Parking requested");
     }
     else if (msg->data == 0x110)
     {
 		requestedLoopOn = true;
-        ROS_INFO("Lopp off");
+		eventQueue->raiseEvent("/LOOPDETECTION_CHANGED");
+        ROS_INFO("AutoMowerSafe: Loop detection on");
     }
     else if (msg->data == 0x111)
     {
 		requestedLoopOn = false;
-        ROS_INFO("Loop on");
+		eventQueue->raiseEvent("/LOOPDETECTION_CHANGED");
+        ROS_INFO("AutoMowerSafe: Loop detection off");
     }
     else
     {
@@ -504,10 +559,17 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
 
 bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
 {
+	
+	// std::cout << msg << std::endl;
+	static boost::mutex mtx_serial; 
+    
+	mtx_serial.lock();
+	
     double endSendTime;
 
     if ((serialPortState == AM_SP_STATE_OFFLINE) || (serialPortState == AM_SP_STATE_ERROR))
     {
+		mtx_serial.unlock();
         return false;
     }
 
@@ -515,6 +577,23 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     hcp_Int numBytes = 0;
 
     numBytes = hcp_Encode(hcpState, codecId, (hcp_szStr)msg, buf, 255);
+    
+    if (numBytes <0)
+    {
+        if (numBytes == HCP_COMMANDNOTLOADED)
+        {
+			std::cout <<  msg << std::endl;
+			ROS_ERROR("JSON file does not support command:  %s ", msg);
+		}
+        else
+		{
+			ROS_ERROR("JSON encoding failed with error %d for command %s ", numBytes, msg);
+		}
+       
+	    serialPortState = AM_SP_STATE_ERROR;
+	    return false;
+	}
+	
 
     if (serialLog) { 
 	    std::cout << "SEND: " << std::hex;
@@ -549,7 +628,8 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     // Read one byte
     res = read(serialFd, &buf[0], 1);
 
-    double responseTime = ros::WallTime::now().toSec() - startTime - endSendTime;
+//    double responseTime = ros::WallTime::now().toSec() - startTime - endSendTime;
+      double responseTime = 0;
     
 
 
@@ -573,6 +653,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     		
     	if (serialLog) {std::cout << "\n first read byte is zero => FAILED!  res = " << res << "  buf[0]= " << int(buf[0]) << " errno =" << errno  << "respTime " << responseTime  <<std::endl;}
         serialPortState = AM_SP_STATE_ERROR;
+		mtx_serial.unlock();
         return false;
     }
 
@@ -611,12 +692,14 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
         ROS_WARN("Automower::Failed to get response...sleeping?");
         serialPortState = AM_SP_STATE_ERROR;
 
+		mtx_serial.unlock();
         return false;
     }
 
     if (result.error != HCP_NOERROR)
     {
         ROS_WARN("Automower::Error receiving...not logged in?");
+		mtx_serial.unlock();
         return false;
     }
 
@@ -624,6 +707,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
  
     //std::cout << "SAFE::result.parameterCount= " << result.parameterCount << std::endl;
 
+	mtx_serial.unlock();
     return true;
 }
 
@@ -658,7 +742,7 @@ bool AutomowerSafe::initAutomowerBoard()
         return false;
     }
 
-    if (mowerType == 7)
+    if ((mowerType == 7) || (mowerType == 8))    // 430x OR 450X
     {
         // Get some stuff out from the mower...
         //WHEEL_DIAMETER = ;
@@ -671,26 +755,17 @@ bool AutomowerSafe::initAutomowerBoard()
     ROS_INFO("Automower::AUTMOWER_WHEEL_BASE_WIDTH = %f", AUTMOWER_WHEEL_BASE_WIDTH);
     ROS_INFO("Automower::WHEEL_PULSES_PER_TURN = %d", WHEEL_PULSES_PER_TURN);
     ROS_INFO("Automower::WHEEL_METER_PER_TICK = %f", WHEEL_METER_PER_TICK);
-/*
-    // Motortypes:
-    // - 1093 - A330 old motors
-    // - 349  - A330/320 UltraSilent Motors
-    // - 1192 - A320
 
-    // UltraSilent motors are inverted...
-    if ((WHEEL_PULSES_PER_TURN == 349) || (WHEEL_PULSES_PER_TURN == 1192))
-    {
-        invertedMotors = true;
-    }
-*/
 
-    // PID parameters set for 50z 
+    // PID parameters set for 50Hz 
     // x factor Adjust to equal regulation as for 50 Hz 
-    double x = 50.0/updateRate;  
-    
-    leftWheelPid.Init(50.0*x, 10.0*x, 1.0*x);
-    rightWheelPid.Init(50.0*x, 10.0*x, 1.0*x);
 
+
+	double x = 50.0/updateRate;  
+
+	leftWheelPid.Init(50.0, 10.0*x, 1.0/x);
+	rightWheelPid.Init(50.0, 10.0*x, 1.0/x);
+	
     lastComtestWheelMotorPower = 15;
 
 	char msg1[100];
@@ -698,8 +773,7 @@ bool AutomowerSafe::initAutomowerBoard()
 
 	if (!sendMessage(msg1, sizeof(msg1), result))
 	{
-		ROS_ERROR("Automower::Failed setting Demo Mode.");
-		requestedMode = mode; 
+		ROS_ERROR("Automower::Failed setting Auto Mode.");
 		cuttingDiscOn = lastCuttingDiscOn;
 		return false;   
 	}
@@ -770,7 +844,6 @@ bool AutomowerSafe::getRealTimeData()
     if (result.parameterCount > 0)
     {
         leftPulses = -result.parameters[0].value.i32;
-        //std::cout << "LeftPulses: " << leftPulses << std::endl;
     }
 
     const char* rightCounterMsg = "Wheels.GetRotationCounter(index:0)";
@@ -781,7 +854,6 @@ bool AutomowerSafe::getRealTimeData()
     if (result.parameterCount > 0)
     {
         rightPulses = -result.parameters[0].value.i32;
-        //std::cout << "RightPulses: " << rightPulses << std::endl;
     }
 
     return true;
@@ -797,7 +869,7 @@ std::string AutomowerSafe::resultToString(hcp_tResult result)
     double value;
     if (result.parameterCount < 0 || result.parameterCount > 100)
     {
-        std::cout << "invalid number of parameters: " << result.parameterCount << std::cout;
+        std::cout << "invalid number of parameters: " << result.parameterCount << std::endl;
         return "error";
     }
     for (i = 0; i  < result.parameterCount; i++)
@@ -900,6 +972,126 @@ std::string AutomowerSafe::resultToString(hcp_tResult result)
 
 }
 
+bool AutomowerSafe::getPitchAndRoll()
+{
+    hcp_tResult result;
+    pitchRollCheckCounter++;
+    if ((pitchRollCheckCounter % pitchRollCheckCounterLimit) == 0)
+    {
+        pitchRollCheckCounter = 0;
+
+		const char* accelerometerMsg = "RealTimeData.GetComboardSensorData()";
+		if (!sendMessage(accelerometerMsg, sizeof(accelerometerMsg), result))
+		{
+			return false;   
+		}
+
+		if (result.parameterCount == 5)
+		{
+			int pitch;
+			int roll;
+			int yawAcc;
+			unsigned int upside;
+			int temperature;
+			pitch       = result.parameters[0].value.i16;
+			roll        = result.parameters[1].value.i16;
+			yawAcc      = result.parameters[2].value.i16;
+			upside      = result.parameters[3].value.u8;
+			temperature = result.parameters[4].value.i16;
+//			std:: cout << " pitchA: " << pitch << "  roll: " << roll << "  yaw: "  << yawAcc << "  upside: " << upside << "   temperature: " << temperature << std::endl;
+			m_pitch = pitch/10.0 * RADIANS_PER_DEGREE;
+			m_roll  = roll/10.0 * RADIANS_PER_DEGREE;
+		}
+	}
+}
+
+
+bool AutomowerSafe::getGPSData()
+{
+    hcp_tResult result;
+    GPSCheckCounter++;
+    if ((GPSCheckCounter % GPSCheckCounterLimit) == 0)
+    {
+        GPSCheckCounter = 0;
+		const char* GPS_Msg = "RealTimeData.GetGPSData()";
+		if (!sendMessage(GPS_Msg, sizeof(GPS_Msg), result))
+		{
+			return false;   
+		}
+
+		if (result.parameterCount == 15)
+		{
+			uint8_t north;
+			uint8_t east;
+			unsigned int latitudeDegMinutes;
+			unsigned int latitudeDecimalMinute;
+			unsigned int longitudeDegMinutes;
+			unsigned int longitudeDecimalMinute;
+			uint8_t  nbrSatellites;
+			double latitude;
+			double longitude;
+			unsigned int hdop;
+			uint8_t GPS_status;
+			
+			nbrSatellites          = result.parameters[1].value.u8;
+			hdop                   = result.parameters[2].value.u16;
+			north                  = result.parameters[3].value.u8;
+			east                   = result.parameters[4].value.u8;
+			latitudeDegMinutes     = result.parameters[5].value.u32;
+			latitudeDecimalMinute  = result.parameters[6].value.u32;
+			longitudeDegMinutes    = result.parameters[7].value.u32;
+			longitudeDecimalMinute = result.parameters[8].value.u32;
+			GPS_status             = result.parameters[14].value.u8;
+			
+
+
+			if (north == 1)
+			{
+				latitude = latitudeDegMinutes/100 + (latitudeDegMinutes%100 + latitudeDecimalMinute*0.0001)/60;
+			}
+			else
+			{
+				latitude = -(latitudeDegMinutes/100 + (latitudeDegMinutes%100 + latitudeDecimalMinute*0.0001)/60);
+			}
+			if (east == 1)
+			{
+				longitude = longitudeDegMinutes/100 + (longitudeDegMinutes%100 + longitudeDecimalMinute*0.0001)/60;
+			}
+			else
+			{
+				longitude = -(longitudeDegMinutes/100 + (longitudeDegMinutes%100 + longitudeDecimalMinute*0.0001)/60);
+			}
+
+
+
+
+			double covariance = (hdop *1.5)* (hdop *1.5);    // Approximate the covariance
+
+			m_navSatFix_msg.header.stamp  = ros::Time::now();
+			m_navSatFix_msg.latitude  = latitude;
+			m_navSatFix_msg.longitude = longitude;
+			m_navSatFix_msg.altitude  = 0.0;
+			
+			
+			for (int i=0; i++; i<9)
+			{	
+				m_navSatFix_msg.position_covariance[i]  = covariance;
+			}
+			
+			m_navSatFix_msg.position_covariance_type = sensor_msgs::NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
+			m_navSatFix_msg.status.status = GPS_status;
+			m_navSatFix_msg.status.service = sensor_msgs::NavSatStatus::SERVICE_GPS;
+			
+			navSatFix_pub.publish(m_navSatFix_msg);
+			
+			//std:: cout << "nSat : " << int(nbrSatellites) << "  lat: " << latitude << "  long: "  << longitude << " status: " << int(GPS_status) << " " << latitudeDegMinutes  << " " << latitudeDecimalMinute << std::endl;
+			
+				
+		}
+    }
+}
+
+
 bool AutomowerSafe::getSensorData()
 {
     hcp_tResult result;
@@ -908,7 +1100,7 @@ bool AutomowerSafe::getSensorData()
     // SensorStatus
     //
     sensorCheckCounter++;
-    if ((sensorCheckCounter % 20) == 0)
+    if ((sensorCheckCounter % sensorCheckCounterLimit) == 0)
     {
         sensorCheckCounter = 0;
 
@@ -937,7 +1129,7 @@ bool AutomowerSafe::getSensorData()
         }
         if (result.parameterCount == 1)
         {
-            //std::cout << "SensorStatus: Check CS: " << (int)result.parameters[0].value.b << std::endl;
+            // std::cout << "SensorStatus: Check CS: " << (int)result.parameters[0].value.b << std::endl;
             // 0 - Means in CS (this is an ENUM = 0 in the mower)
             if (result.parameters[0].value.b == 0)
             {
@@ -977,19 +1169,20 @@ bool AutomowerSafe::getSensorData()
         }
 
 
+
 		if (cuttingDiscOn)
 		{
 			sensorStatus.sensorStatus |= HVA_SS_DISC_ON;
 		}
 
-		if (mode == MODE_PARK)
+		if (sensorStatus.controlState == AM_STATE_PARK)
 		{
 			sensorStatus.sensorStatus |= HVA_SS_PARKED;
 		}
 
 
-    }
 
+    }
 
 
     //
@@ -997,10 +1190,11 @@ bool AutomowerSafe::getSensorData()
     //
 
 	stateCheckCounter++;
-	if (stateCheckCounter >= 10)
+	if (stateCheckCounter >= stateCheckCounterLimit)
 	{
 		stateCheckCounter = 0;
 	
+/*
 	
 		const char* msg1 = "MowerApp.GetMode()";
 		if (!sendMessage(msg1, sizeof(msg1), result))
@@ -1010,7 +1204,7 @@ bool AutomowerSafe::getSensorData()
 		
 		int AM_mode = result.parameters[0].value.u8;
 		
-		char modeStr[100];
+				char modeStr[100];
 		char stateStr[100];
 
 		switch (AM_mode)
@@ -1032,98 +1226,64 @@ bool AutomowerSafe::getSensorData()
 			strcpy(modeStr, "Unknown");
 		 } 
 
+		DEBUG_LOG(modeStr)
 
-
+*/
 		const char* msg2 = "MowerApp.GetState()";
 		if (!sendMessage(msg2, sizeof(msg2), result))
 		{
 			return false;   
 		}
 		int state = result.parameters[0].value.u8;
+		sensorStatus.mowerInternalState = state;
 		switch (state)
 		{
-		  case 0:
-			strcpy(stateStr,"Off  ");
+		  case IMOWERAPP_STATE_OFF:
 			sensorStatus.operationalMode = AM_OP_MODE_OFFLINE;
 			break;
-		  case 1:
+		  case IMOWERAPP_STATE_WAIT_SAFETY_PIN:
 			sensorStatus.operationalMode = AM_OP_MODE_OFFLINE;
-			strcpy(stateStr,"Wait for safety pin");
-			mode = MODE_STOPPED;
 			break;
-		  case 2:
+		  case IMOWERAPP_STATE_STOPPED:
 			sensorStatus.operationalMode = AM_OP_MODE_OFFLINE;
-			strcpy(stateStr,"Stopped  ");
-			mode = MODE_STOPPED;
+			eventQueue->raiseEvent("/AM_STOPPED");
 			break;
-		  case 3:
+		  case IMOWERAPP_STATE_FATAL_ERROR:
 			sensorStatus.operationalMode = AM_OP_MODE_OFFLINE;
-			strcpy(stateStr,"Fatal error  ");
-			mode = MODE_STOPPED;
 			break;
-		  case 4:
+		  case IMOWERAPP_STATE_PENDING_START:
 			sensorStatus.operationalMode = AM_OP_MODE_OFFLINE;
-			strcpy(stateStr,"Pending start  ");
-			mode = MODE_STOPPED;
 			break;
-		  case 5:
+		  case IMOWERAPP_STATE_PAUSED:
 			sensorStatus.operationalMode = AM_OP_MODE_CONNECTED_MANUAL;
-			strcpy(stateStr,"Paused  ");
-			mode = MODE_MANUAL;
+			eventQueue->raiseEvent("/AM_PAUSED");
 			break;
-		  case 6:
-			strcpy(stateStr,"In operation  ");
+		  case IMOWERAPP_STATE_IN_OPERATION:
 			sensorStatus.operationalMode = AM_OP_MODE_CONNECTED_RANDOM;
-			if (AM_mode == 2)
-			{
-				mode = MODE_PARK;
-			}
-			else
-			{
-				mode = MODE_RANDOM;
-			}
+			eventQueue->raiseEvent("/AM_IN_OPERATION");
 			break;
-		  case 7:
-			strcpy(stateStr,"Restricted  ");
+			
+		  case IMOWERAPP_STATE_RESTRICTED:
 			sensorStatus.operationalMode = AM_OP_MODE_CONNECTED_RANDOM;
-			if (AM_mode == 2)
-			{
-				mode = MODE_PARK;
-			}
-			else
-			{
-				mode = MODE_RANDOM;
-			}
+			eventQueue->raiseEvent("/AM_IN_OPERATION");
 			break;
-		  case 8:
+		  case IMOWERAPP_STATE_ERROR:
 			sensorStatus.operationalMode = AM_OP_MODE_CONNECTED_RANDOM;
-			strcpy(stateStr,"Error  ");
-			if (AM_mode == 2)
-			{
-				mode = MODE_PARK;
-			}
-			else
-			{
-				mode = MODE_RANDOM;
-			}
 			break;
 		  
 		  default:
-			strcpy(stateStr,"Unknown");
+		    break;
 		 } 
 	}
 
-//	std::cout << "AMMode: " << modeStr << "State: " << stateStr << "  om: " << sensorStatus.operationalMode << " rm: " << requestedMode <<  " mode = " << mode << " \r" << std::flush;
 
-	
-	
 
 
     //
     // Battery check
     //
     batteryCheckCounter++;
-    if ((batteryCheckCounter % 50) == 0)
+    if ((batteryCheckCounter % batteryCheckCounterLimit) == 0)
     {
         batteryCheckCounter = 0;
 
@@ -1168,7 +1328,7 @@ bool AutomowerSafe::getSensorData()
     // LoopSensor
     //
     loopSensorCheckCounter++;
-    if ((loopSensorCheckCounter % 20) == 0)
+    if ((loopSensorCheckCounter % loopSensorCheckCounterLimit) == 0)
     {
         loopSensorCheckCounter = 0;
 
@@ -1253,6 +1413,7 @@ bool AutomowerSafe::getSensorData()
 void AutomowerSafe::stopWheels()
 {
 	
+	//DEBUG_LOG ("AutomowerSafe::stopWheels()")
 	// Clear the PIDs and power
 	leftWheelPid.Restart();
 	rightWheelPid.Restart();
@@ -1275,16 +1436,18 @@ void AutomowerSafe::stopWheels()
 
 void AutomowerSafe::regulateVelocity()
 {
-    if ((userStop) || (((requestedMode == MODE_RANDOM)  || (requestedMode == MODE_PARK)) && (mode == MODE_MANUAL)))
+  
+    if (!m_regulatingActive)
+    {
+		return;
+	}
+
+    if (userStop)
     {
 		stopWheels();
         return;
     }
     
-    if (mode != MODE_MANUAL)
-    {
-		return;
-	}
 	
 
     power_l = leftWheelPid.Update(current_lv, wanted_lv);
@@ -1317,7 +1480,6 @@ void AutomowerSafe::regulateVelocity()
     hcp_tResult result;
     char powerMsg[100];
     snprintf(powerMsg, sizeof(powerMsg), "HardwareControl.WheelMotorsPower(leftWheelMotorPower:%d, rightWheelMotorPower:%d)", power_l, power_r);
-    // std::cout << "Send: " << powerMsg << std::endl;
     if (!sendMessage(powerMsg, sizeof(powerMsg), result))
     {
         return;   
@@ -1386,8 +1548,21 @@ bool AutomowerSafe::doSerialComTest()
 
 bool AutomowerSafe::update(ros::Duration dt)
 {
-	
-        
+
+
+
+
+    rateCalcCounter++;
+    
+    if (rateCalcCounter >= 100)
+    {
+		double rate = 100.0/(ros::WallTime::now().toSec() - lastRateCheckTime);
+		DEBUG_LOG("Actual Regulation rate: " << rate);
+		rateCalcCounter = 0;
+		lastRateCheckTime = ros::WallTime::now().toSec();
+	}
+
+
     if (serialPortState == AM_SP_STATE_ERROR)
     {
     	if (!serialComTest)
@@ -1404,7 +1579,6 @@ bool AutomowerSafe::update(ros::Duration dt)
     	serialPortState = AM_SP_STATE_OFFLINE;
     }
     
-
     if (serialPortState == AM_SP_STATE_OFFLINE)
     {
 
@@ -1425,6 +1599,10 @@ bool AutomowerSafe::update(ros::Duration dt)
                 ROS_WARN("New try in 10 seconds");
             }
         }
+        else
+			{
+				ROS_INFO("WAITING");
+			}
 
     }
 
@@ -1434,13 +1612,20 @@ bool AutomowerSafe::update(ros::Duration dt)
         serialPortState = AM_SP_STATE_CONNECTED;
 
 
+		if (requestedState == AM_STATE_MANUAL)
+		{
+			eventQueue->raiseEvent("/MANUAL");
+		}
+		else if (requestedState == AM_STATE_RANDOM)
+		{
+			eventQueue->raiseEvent("/RANDOM");
+		}
+
+
+
     }
 
 
-	if (!active)
-	{
-		return true;
-	}
 
     if (serialComTest)
     {
@@ -1455,6 +1640,16 @@ bool AutomowerSafe::update(ros::Duration dt)
     {
     	getRealTimeData();
         getSensorData();
+
+        if (m_publishGPS)
+        {
+			getGPSData();
+		}
+		if (m_PitchAndRollFromAccelerometer)
+		{
+			getPitchAndRoll();
+		}
+
         regulateVelocity();
     }
 
@@ -1474,7 +1669,7 @@ bool AutomowerSafe::update(ros::Duration dt)
     if ((fabs(leftDist) > 1.0) || (fabs(rightDist) > 1.0))
     {
         ROS_WARN("Automower::Strange distance? => ld = %f, rd = %f", leftDist, rightDist);
-        leftDist = 0;
+        leftDist = 0;	
         rightDist = 0;
     }
 
@@ -1503,7 +1698,16 @@ bool AutomowerSafe::update(ros::Duration dt)
     robot_pose.pose.position.x = xpos;
     robot_pose.pose.position.y = ypos;
 
-    tf::Quaternion qyaw = tf::createQuaternionFromYaw(yaw);
+	tf::Quaternion qyaw;
+
+    if (m_PitchAndRollFromAccelerometer)
+    {
+		qyaw = tf::createQuaternionFromRPY(m_roll,m_pitch, yaw);
+	}
+	else
+	{
+		qyaw = tf::createQuaternionFromYaw(yaw);
+	}
     robot_pose.pose.orientation.x = qyaw.x();
     robot_pose.pose.orientation.y = qyaw.y();
     robot_pose.pose.orientation.z = qyaw.z();
@@ -1586,272 +1790,140 @@ bool AutomowerSafe::update(ros::Duration dt)
     wheelPower.header.frame_id = "odom";
     wheelPower_pub.publish(wheelPower);
 
-
-
-	char msgA[100];
-    hcp_tResult result;
-
-	switch (mode)
-	{
-		case MODE_MANUAL:
-			switch (requestedMode)
-			{
-				case MODE_MANUAL:
-					requestedMode = MODE_UNDEFINED;   // Just come here once after entry.
-
-					if (cuttingDiscOn)
-					{
-						const char* msg = "BladeMotor.On()";
-						if (!sendMessage(msg, sizeof(msg), result))
-						{
-							return false;   	
-						}
-						const char* msg1 = "BladeMotor.Run()";
-						if (!sendMessage(msg1, sizeof(msg1), result))
-						{
-							return false;   	
-						}
-							
-					}
-					
-					
-					// Do nothing
-					break;
-				case MODE_PARK:
-					{
-						stopWheels();
-						
-						snprintf(msgA, sizeof(msgA), "MowerApp.SetMode(modeOfOperation:%d)",IMOWERAPP_MODE_HOME);
-						if (!sendMessage(msgA, sizeof(msgA), result))
-						{
-							return false;   	
-						}
-						const char* msg = "MowerApp.StartTrigger()";
-						if (!sendMessage(msg, sizeof(msg), result))
-						{
-							return false;   	
-						}
-					}
-					break;
-				case MODE_RANDOM:
-					{
-						stopWheels();
-						const char* msg = "MowerApp.StartTrigger()";
-						if (!sendMessage(msg, sizeof(msg), result))
-						{
-							return false;   	
-						}
-					}
-					break;
-				case MODE_STOPPED:
-				case MODE_UNDEFINED:
-					// Do nothing
-					break;
-				default:
-					ROS_ERROR("Automower_Safe - Statemachine Error");
-			}
-			break;
-		case MODE_PARK:
-			switch (requestedMode)
-			{
-				case MODE_MANUAL:
-					{
-						snprintf(msgA, sizeof(msgA), "MowerApp.SetMode(modeOfOperation:%d)",IMOWERAPP_MODE_AUTO);
-
-						if (!sendMessage(msgA, sizeof(msgA), result))
-						{
-							return false;   	
-						}
-						const char* msg = "MowerApp.Pause()";
-
-						if (!sendMessage(msg, sizeof(msg), result))
-						{
-							return false;   	
-						}
-					}
-					break;
-				case MODE_PARK:
-					// Do nothing
-					requestedMode = MODE_UNDEFINED;   // Just come here after entry.
-					break;
-				case MODE_RANDOM:
-					{
-						snprintf(msgA, sizeof(msgA), "MowerApp.SetMode(modeOfOperation:%d)",IMOWERAPP_MODE_AUTO);
-						if (!sendMessage(msgA, sizeof(msgA), result))
-						{
-							return false;   	
-						}
-					}
-
-					break;
-				case MODE_STOPPED:
-				case MODE_UNDEFINED:
-					// Do nothing
-					break;
-				default:
-					ROS_ERROR("Automower_Safe - Statemachine Error");
-			}
-			break;
-		case MODE_RANDOM:
-			
-
-			
-
-			switch (requestedMode)
-			{
-				case MODE_MANUAL:
-					{
-						const char* msg = "MowerApp.Pause()";
-						if (!sendMessage(msg, sizeof(msg), result))
-						{
-							return false;   	
-						}
-					}
-					
-					break;
-				case MODE_PARK:
-					{
-						snprintf(msgA, sizeof(msgA), "MowerApp.SetMode(modeOfOperation:%d)",IMOWERAPP_MODE_HOME);
-						if (!sendMessage(msgA, sizeof(msgA), result))
-						{
-							return false;   	
-						}
-					}
-					break;
-				case MODE_RANDOM:
-					std::cout << "C3.";
-					sendStopCuttingDiscCounter = 0;
-					requestedMode = MODE_UNDEFINED;   // Just come here once after entry.
-					break;
-			 	case MODE_STOPPED:
-				case MODE_UNDEFINED:
-					break;
-				default:
-					ROS_ERROR("Automower_Safe - Statemachine Error");
-			}
-
-			if (!cuttingDiscOn)
-			// Automower automatically puts on cutting disc after a while , stop it explicitly to prevent this.
-			{
-				sendStopCuttingDiscCounter++;
-				if (sendStopCuttingDiscCounter > 40)
-				{
-					sendStopCuttingDiscCounter = 0;
-					const char* msg = "BladeMotor.Brake()";
-					if (!sendMessage(msg, sizeof(msg), result))
-					{
-						return false;   	
-					}
-				}
-			}
-
-			break;
-		case MODE_UNDEFINED:
-		case MODE_STOPPED:
-			switch (requestedMode)
-			{
-				case MODE_MANUAL:
-					ROS_INFO("Automower_Safe - Mower not started");
-					break;
-				case MODE_PARK:
-					ROS_INFO("Automower_Safe - Mower not started");
-					break;
-				case MODE_RANDOM:
-					ROS_INFO("Automower_Safe - Mower not started");
-					break;
-				case MODE_STOPPED:
-				case MODE_UNDEFINED:
-					// Do nothing
-					break;
-				default:
-					ROS_ERROR("Automower_Safe - Statemachine Error");
-			}
-			break;
-
-
-
-		default:
-			ROS_ERROR("Automower_Safe - Statemachine Error");
-
-	}
-
-
-	if (cuttingDiscOn != lastCuttingDiscOn)
-	{
-		if (cuttingDiscOn)
-		{
-			const char* msg = "BladeMotor.On()";
-			if (!sendMessage(msg, sizeof(msg), result))
-			{
-				return false;   	
-			}
-			const char* msg1 = "BladeMotor.Run()";
-			if (!sendMessage(msg1, sizeof(msg1), result))
-			{
-				return false;   	
-			}
-			
-				
-		}
-		else
-		{
-			const char* msg = "BladeMotor.Brake()";
-			if (!sendMessage(msg, sizeof(msg), result))
-			{
-				return false;   	
-			}
-		}
-
-		lastCuttingDiscOn = cuttingDiscOn;
-	}
-	
-  
-	if (requestedLoopOn != loopOn)
-	{
-        char msg[100];
-		snprintf(msg, sizeof(msg), "SystemSettings.SetLoopDetection(loopDetection:%d)", requestedLoopOn);		
-        if (!sendMessage(msg, sizeof(msg), result))
-        {
-            ROS_ERROR("Automower::Failed setting LoopDetection on/off");
-            cuttingHeight = lastCuttingHeight;
-            return false;   
-        }
-        loopOn = requestedLoopOn;
-	}
-	
-
-    // Cutting height
-    if (cuttingHeight != lastCuttingHeight)
-    {
-        hcp_tResult result;
-
-        ROS_INFO("Automower::set new cutting height= %d mm", cuttingHeight);
-
-        char msg[100];
-        snprintf(msg, sizeof(msg), "HeightMotor.SetHeight(height:%d)", cuttingHeight);
-        
-        if (!sendMessage(msg, sizeof(msg), result))
-        {
-            ROS_ERROR("Automower::Failed setting cutting height.");
-            cuttingHeight = lastCuttingHeight;
-            return false;   
-        }
-
-        if (result.parameterCount == 1)
-        {
-            int retVal = result.parameters[0].value.u8;
-            if (retVal == 0)
-            {
-                lastCuttingHeight = cuttingHeight;
-            }
-            else
-            {
-                cuttingHeight = lastCuttingHeight;
-                ROS_INFO("Automower: Unable to set cutting height ... Not started?");
-            }
-        }
-    }
-
     return true;
 }
+
+void AutomowerSafe::pauseMower()
+{
+	DEBUG_LOG("AutoMowerSafe::pauseMower()")
+
+    hcp_tResult result;
+
+	const char* msg = "MowerApp.Pause()";
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+}
+void AutomowerSafe::startMower()
+{
+	DEBUG_LOG("AutoMowerSafe::startMower()")
+
+    hcp_tResult result;
+	const char* msg = "MowerApp.StartTrigger()";
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+}
+void AutomowerSafe::setParkMode()
+{
+	DEBUG_LOG("AutoMowerSafe::parkMower()")
+
+    hcp_tResult result;
+	char msg[100];
+	snprintf(msg, sizeof(msg), "MowerApp.SetMode(modeOfOperation:%d)",IMOWERAPP_MODE_HOME);
+
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+}
+void AutomowerSafe::setAutoMode()
+{
+	DEBUG_LOG("AutoMowerSafe::setAutoMode()")
+
+    hcp_tResult result;
+	char msg[100];
+	snprintf(msg, sizeof(msg), "MowerApp.SetMode(modeOfOperation:%d)",IMOWERAPP_MODE_AUTO);
+
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+}
+void AutomowerSafe::cutDiscHandling()
+{
+	DEBUG_LOG("AutoMowerSafe::cutDiscHandling()")
+
+    hcp_tResult result;
+	if (cuttingDiscOn)
+	{
+		const char* msg = "BladeMotor.On()";
+		if (!sendMessage(msg, sizeof(msg), result))
+		{
+			eventQueue->raiseEvent("/COM_ERROR");
+			return;
+		}
+		const char* msg1 = "BladeMotor.Run()";
+		if (!sendMessage(msg1, sizeof(msg1), result))
+		{
+			eventQueue->raiseEvent("/COM_ERROR");
+			return;
+		}
+			
+	}
+	else
+	{
+		cutDiscOff();
+	}
+}
+
+void AutomowerSafe::loopDetectionHandling()
+{
+	DEBUG_LOG("AutoMowerSafe::loopDetectionHandling()" )
+
+    hcp_tResult result;
+
+	char msg[100];
+	snprintf(msg, sizeof(msg), "SystemSettings.SetLoopDetection(loopDetection:%d)", requestedLoopOn);		
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		ROS_ERROR("Automower::Failed setting LoopDetection on/off");
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+
+}
+
+
+void AutomowerSafe::cuttingHeightHandling()
+{
+	hcp_tResult result;
+	DEBUG_LOG("AutoMowerSafe::cuttingHeightHandling()" )
+	ROS_INFO("Automower::set new cutting height= %d mm", cuttingHeight);
+
+	char msg[100];
+	snprintf(msg, sizeof(msg), "HeightMotor.SetHeight(height:%d)", cuttingHeight);
+	
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		ROS_ERROR("Automower::Failed setting cutting height.");
+		cuttingHeight = lastCuttingHeight;
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+
+}
+
+
+void AutomowerSafe::cutDiscOff()
+{
+	DEBUG_LOG("AutoMowerSafe::cutDiscOff()" )
+
+    hcp_tResult result;
+
+	const char* msg = "BladeMotor.Brake()";
+	if (!sendMessage(msg, sizeof(msg), result))
+	{
+		eventQueue->raiseEvent("/COM_ERROR");
+	}
+
+}
+
+void AutomowerSafe::newControlMainState(int aNewState)
+{
+		sensorStatus.controlState = aNewState;
+}	
+
+
+
 }

@@ -1,25 +1,19 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(am_driver_safe)
-
-set(CMAKE_C_FLAGS "-std=c99 -DHCP_NOEXPORT -DHCP_EXPORT")
-set(CMAKE_CXX_FLAGS "-DHCP_NOEXPORT -DHCP_EXPORT -std=c++11 -DDISABLE_DECISION_MAKING_LOG")
-
+project(hq_decision_making)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  hq_decision_making
-  hq_decision_making_parser
   roscpp
+  hq_robot_task
+  hq_decision_making_parser
+  diagnostic_updater
   std_msgs
-  geometry_msgs
-  sensor_msgs
-  nav_msgs
-  tf
-  am_driver
-  message_generation
 )
+
+#find_package(robot_task REQUIRED)
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -55,14 +49,18 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-#add_message_files(
-#  FILES
-#)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
-add_service_files(
-  FILES
-  TifCmd.srv
-)
+## Generate services in the 'srv' folder
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -72,12 +70,10 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   std_msgs
-   geometry_msgs
-   am_driver_safe
- )
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ###################################
 ## catkin specific configuration ##
@@ -90,8 +86,8 @@ add_service_files(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES am_driver
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf message_runtime am_driver
+  LIBRARIES hq_decision_making_ros
+  CATKIN_DEPENDS roscpp hq_robot_task diagnostic_updater std_msgs
 #  DEPENDS system_lib
 )
 
@@ -102,39 +98,53 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-include_directories(include include/hcp ${catkin_INCLUDE_DIRS})
+include_directories(
+  include/hq_decision_making
+  ${catkin_INCLUDE_DIRS}
+)
 
 ## Declare a cpp library
-# add_library(am_driver
-#   src/${PROJECT_NAME}/am_driver.cpp
+# add_library(decision_making
+#   src/${PROJECT_NAME}/decision_making.cpp
 # )
 
 ## Declare a cpp executable
-add_executable(am_driver_safe_node
-    src/am_driver_safe_node.cpp src/automower_safe.cpp src/automower_safe_states.cpp
-    src/hcp/cJSON.c
-    src/hcp/hcp_library.c
-    src/hcp/hcp_runtime.c
-    src/hcp/hcp_string.c
-    src/hcp/hcp_tif.c
-    src/hcp/hcp_vector.c
-    src/hcp/amg3.c)
 
 
-hq_decision_making_parsing(src/automower_safe_states.cpp)
+#===================== ROS =============================================
 
-add_dependencies(am_driver_safe_node am_driver_generate_messages_cpp am_driver_safe_generate_messages_cpp)
+add_library(hq_decision_making_ros src/hq_ROSTask.cpp)
+add_dependencies(hq_decision_making_ros hq_robot_task_gencpp)
+target_link_libraries(hq_decision_making_ros ${catkin_LIBRARIES} )
+
+#=======================================================================
+
+#add_executable(fsm_example src/FSMExample.cpp)
+#target_link_libraries(fsm_example ${catkin_LIBRARIES} )
+
+
+#add_executable(task_test src/ROSTask.cpp)
+#target_link_libraries(task_test ${catkin_LIBRARIES} )
+
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
-# add_dependencies(am_driver_node am_driver_generate_messages_cpp)
+# add_dependencies(decision_making_node decision_making_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(am_driver_safe_node
-  ${catkin_LIBRARIES}
-)
+
+#==================== PARSER ===========================================
+
+#add_executable(parse_code src/test_parser.cpp)
+#message("do decision_making_parsing")
 
 
+hq_decision_making_parsing(
+	src/hq_ROSTask.cpp
+)  
+
+    
+#=======================================================================
 #############
 ## Install ##
 #############
@@ -150,7 +160,7 @@ target_link_libraries(am_driver_safe_node
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS am_driver am_driver_node
+# install(TARGETS decision_making decision_making_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -175,7 +185,7 @@ target_link_libraries(am_driver_safe_node
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_am_driver.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_decision_making.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

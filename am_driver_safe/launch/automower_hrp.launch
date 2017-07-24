@@ -6,9 +6,11 @@
 
   <!-- Start the am_driver -->
   <node name="am_driver_safe" pkg="am_driver_safe" type="am_driver_safe_node" output="screen">
-    <param name="serialPort" value="/dev/ttyO4" type="str" />
-    <param name="printCharge" value="false"/>
-    <param name="publishTf" value="1"/>
+    <param name="serialPort" value="/dev/ttyACM0" type="str" />
+	<param name="printCharge" value="false"/>
+	<param name="publishTf" value="1"/>
+	<param name="pitchAndRoll" value="true"/>
+	<param name="publishGPS" value="true"/>
     <param name="serialLog" value="false"/>
     <param name="hil" value="0"/>
     <param name="jsonFile" value="$(find am_driver_safe)/config/automower_hrp.json" type="string" />
@@ -20,7 +22,7 @@
 
   <!-- publish all the frames to TF -->
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
-    <param name="publish_frequency" value="40"/> <!-- Hz -->
+    <param name="publish_frequency" value="20"/> <!-- Hz -->
   </node>
 
 </launch>
