@@ -50,7 +50,10 @@
   <run_depend>gazebo_plugins</run_depend>
   <run_depend>gazebo_ros</run_depend>
   <run_depend>gazebo_ros_control</run_depend>
-  <run_depend>joint_state_publisher</run_depend>
+  <!-- The following is required for the launchfile. -->
+   <run_depend>joint_state_publisher</run_depend>
+   <run_depend>robot_state_publisher</run_depend>
+   <!-- <run_depend>rviz</run_depend> -->
 
 
   <!-- The export tag contains other, unspecified, tags -->

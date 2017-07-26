@@ -55,6 +55,10 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>message_runtime</run_depend>
+    <!-- The following is required for the launchfile. -->
+  <run_depend>am_description</run_depend>
+  <run_depend>joint_state_publisher</run_depend>
+  <run_depend>robot_state_publisher</run_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

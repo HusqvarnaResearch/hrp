@@ -119,7 +119,6 @@ add_executable(am_driver_safe_node
     src/hcp/hcp_tif.c
     src/hcp/hcp_vector.c
     src/hcp/amg3.c)
-add_dependencies(am_driver_safe_node am_driver_generate_messages_cpp am_driver_safe_generate_messages_cpp)
 
 
 hq_decision_making_parsing(src/automower_safe_states.cpp)
