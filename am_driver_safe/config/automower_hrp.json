@@ -1127,6 +1127,145 @@
           "value": "8"
         }
       ]
+    },
+    {
+      "command": "GetGPSData",
+      "elementType": "IRS",
+      "family": "RealTimeData",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "quality",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "noofsatellites",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "hdop",
+          "type": "uint16",
+          "length": "2"
+        },
+        {
+          "name": "northsouth",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "eastwest",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "latitudedegreeminute",
+          "type": "uint32",
+          "length": "4"
+        },
+        {
+          "name": "latitudedecimalminute",
+          "type": "uint32",
+          "length": "4"
+        },
+        {
+          "name": "longitudedegreeminute",
+          "type": "uint32",
+          "length": "4"
+        },
+        {
+          "name": "longitudedecimalminute",
+          "type": "uint32",
+          "length": "4"
+        },
+        {
+          "name": "xpos",
+          "type": "uint16",
+          "length": "2"
+        },
+        {
+          "name": "ypos",
+          "type": "uint16",
+          "length": "2"
+        },
+        {
+          "name": "gpstype",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "gpscoverage",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "gpsnavigationstatus",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "gpsstatus",
+          "type": "uint8",
+          "length": "1"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "20"
+        },
+        {
+          "key": "subCmd",
+          "value": "7"
+        }
+      ]
+    },
+    {
+      "command": "GetComboardSensorData",
+      "elementType": "IRS",
+      "family": "RealTimeData",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "pitch",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "roll",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "zacceleration",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "upsidedown",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "mowertemp",
+          "type": "sint16",
+          "length": "2"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "20"
+        },
+        {
+          "key": "subCmd",
+          "value": "140"
+        }
+      ]
     }
+
+
+
   ]
 }

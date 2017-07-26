@@ -1,0 +1,93 @@
+<!--
+    Filename: fsm_wandering.launch
+      Author: Igor Makhtes
+        Date: Jan 8, 2014
+
+    The MIT License (MIT)
+
+    Copyright (c) 2014 Cogniteam Ltd.
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+    THE SOFTWARE.
+-->
+
+<launch>
+    <arg name="events" default="true" />
+    <arg name="gui" default="true" />
+
+    <!-- ================================================================== -->
+	<!-- urdf xml robot description loaded on the Parameter Server-->
+    <!-- ================================================================== -->
+	<param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
+
+
+
+
+    <!-- ================================================================== -->
+    <!-- == AM Driver        ============================================== -->
+    <!-- ================================================================== -->
+	<node name="am_driver_safe" pkg="am_driver_safe" type="am_driver_safe_node" output="screen">
+		<param name="serialPort" value="/dev/ttyACM0" type="str" />
+		<param name="printCharge" value="false"/>
+		<param name="publishTf" value="1"/>
+		<param name="pitchAndRoll" value="true"/>
+		<param name="publishGPS" value="true"/>
+		<param name="hil" value="0"/>
+		<param name="jsonFile" value="$(find am_driver_safe)/config/automower_hrp.json" type="string" />
+    </node>
+
+
+    <!-- ================================================================== -->
+	<!-- source that publishes the joint positions as a sensor_msgs/JointState -->
+    <!-- ================================================================== -->
+	<param name="use_gui" value="false"/>
+	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+    <!-- ================================================================== -->
+	<!-- publish all the frames to TF -->
+    <!-- ================================================================== -->
+	<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+    <param name="publish_frequency" value="20"/> <!-- Hz -->
+	</node>
+
+
+
+
+    <!-- ================================================================== -->
+    <!-- == Events publisher ============================================== -->
+    <!-- ================================================================== -->
+    <!-- <node 
+        if="$(arg events)" 
+        name="$(arg example_name)_events" 
+        pkg="decision_making_examples" 
+        type="$(arg example_name)_events" 
+        output="screen" />-->
+
+
+    <!-- ================================================================== -->
+    <!-- == Decision making rqt visualization plugin ====================== -->
+    <!-- ================================================================== -->
+    <node 
+        if="$(arg gui)" 
+        name="rqt" 
+        pkg="rqt_gui" 
+        type="rqt_gui" 
+        args="-s rqt_decision_graph" 
+        output="screen" />
+    
+</launch>

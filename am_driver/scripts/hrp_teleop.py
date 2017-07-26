@@ -1,13 +1,52 @@
 #! /usr/bin/env python
 import rospy, math
 import numpy as np
-import sys, termios, tty, select, os
+import sys, termios, tty, select, os, threading
 from geometry_msgs.msg import Twist
 from std_msgs.msg import UInt16
 from am_driver.msg import SensorStatus
 from am_driver.msg import BatteryStatus
 
-class KeyTeleop(object):
+
+
+def mowerStateToString(x):
+  return {
+    0:'OFF',
+    1:'WAIT_SAFETY_PIN',
+    2:'STOPPED',
+    3:'FATAL_ERROR',
+    4:'PENDING_START',
+    5:'PAUSED',
+    6:'IN_OPERATION',
+    7:'RESTRICTED',
+    8:'ERROR'
+  }.get(x,'UNKNONW_VALUE')
+
+
+def controlStateToString(x):
+  return {
+    0:'UNDEFINED',
+    1:'IDLE',
+    2:'INIT',
+    3:'MANUAL',
+    4:'RANDOM',
+    5:'PARK',
+  }.get(x,'UNKNONW_VALUE')
+
+
+
+#define	AM_STATE_UNDEFINED     0x0
+#define	AM_STATE_IDLE          0x1
+#define	AM_STATE_INIT          0x2
+#define	AM_STATE_MANUAL        0x3
+#define	AM_STATE_RANDOM        0x4
+#define	AM_STATE_PARK          0x5
+
+
+
+my_mutex = threading.Lock() 
+
+class HRP_Teleop(object):
   cmd_bindings = {'q':np.array([1,1]),
                   'w':np.array([1,0]),
                   'e':np.array([1,-1]),
@@ -26,6 +65,11 @@ class KeyTeleop(object):
                   'u':np.array([0,1]),
                   'm':np.array([0,-1])
                   } 
+
+  
+  
+
+
 
   def init(self):
     # Save terminal settings
@@ -49,6 +93,13 @@ class KeyTeleop(object):
     self.shapeNum = 0x20
     self.operationalMode = 0;
     self.sensorStatus = 0;
+    self.mowerInternalState = 0;
+    self.controlState = 0;
+
+    self.last_terminalWidth = 0
+   
+    
+    
  
   def fini(self):
     # Restore terminal settings
@@ -56,9 +107,11 @@ class KeyTeleop(object):
  
 
   def callback_sensor_status(self,data):
-    if (self.operationalMode != data.operationalMode) or (self.sensorStatus != data.sensorStatus):
+    if (self.operationalMode != data.operationalMode) or (self.sensorStatus != data.sensorStatus) or (self.mowerInternalState != data.mowerInternalState) or (self.controlState != data.controlState):
       self.operationalMode = data.operationalMode
       self.sensorStatus = data.sensorStatus
+      self.mowerInternalState = data.mowerInternalState
+      self.controlState = data.controlState
       self.showstatuslines()
      
   def callback_battery_status(self,data):
@@ -66,8 +119,12 @@ class KeyTeleop(object):
     self.battBVolt = data.batteryBVoltage/1000.0
     self.showstatuslines()
 	
+
+
     
   def showstatuslines(self):
+    my_mutex.acquire()
+
     mode =''
     if self.operationalMode==0:
       mode = 'Offline'
@@ -75,6 +132,7 @@ class KeyTeleop(object):
       mode = 'Manual '
     elif self.operationalMode == 2:
       mode = 'Random '
+
 		 
 	#define HVA_SS_HMB_CTRL 0x0001
     #define HVA_SS_OUTSIDE 0x0002
@@ -109,27 +167,53 @@ class KeyTeleop(object):
       status = status + 'CFG NEEDED'
     if self.sensorStatus & 0x0200:
       status = status + 'DISC_ON '
+    else:
+      status = status + 'DISC_OFF '
     if self.sensorStatus & 0x0400:
       status = status + 'LOOP_ON '
     else:
       status = status + 'LOOP_OFF '
       
-    status = status + '                                                                           '
-    
-    msg = u"\u008D"
-    self.loginfoline(msg)
-    msg = u"\u008D"
-    self.loginfoline(msg)
 
-    msg = 'Linear %.2f\tangular %.2f     batA %.1f V  batB %.1f V\n' % (self.speed[0],self.speed[1],self.battAVolt,self.battBVolt)
-    self.loginfoline(msg)
-    msg = ' OpMode: %s\t  Status: %s \n' % (mode,status)
-    self.loginfoline(msg)
+    
+    rows, term_width = os.popen('stty size', 'r').read().split()
+
+    if term_width < self.last_terminalWidth:
+    # Terminal shrink destroys status message, show usage again
+      self.loginfo('\n\n\n\n\n\n\n\n\n\n\n')
+      self.print_usage()
+    self.last_terminalWidth = term_width
+
+    self.move_cursor_one_line_up() 
+    self.move_cursor_one_line_up()
+    self.move_cursor_one_line_up()
+
+    msg = 'Linear %.2f  angular %.2f     batA %.1f V  batB %.1f V' % (self.speed[0],self.speed[1],self.battAVolt,self.battBVolt)
+    self.logstatusline(msg)
+
+    if self.mowerInternalState != 0:
+      # We are controlling via am_driver_safe
+      mowerState = mowerStateToString(self.mowerInternalState)
+      controlState = controlStateToString(self.controlState)
+      msg = 'ControlMode: %s            MowerState: %s' % (controlState,mowerState)
+    else:
+      # We are controlling via am_driver_legacy
+      msg = 'ControlMode: %s            ' % (mode)
+		
+    
+    self.logstatusline(msg)
+
+    msg = 'Status: %s' % (status)
+    self.logstatusline(msg)
+
+    my_mutex.release()
 
   def run(self):
     try:
       self.init()
       self.print_usage()
+      self.showstatuslines()
+
       r = rospy.Rate(self.update_rate) # Hz
       while not rospy.is_shutdown():
         ch = self.get_key()
@@ -144,10 +228,8 @@ class KeyTeleop(object):
  
   def print_usage(self):
     msg = """
-    Keyboard Teleop that Publish to /cmd_vel (geometry_msgs/Twist)
+    HRP Teleop that Publish to /cmd_vel /cmd_mode
     -------------------------------------------------------
-    H:       Print this menu
-
     Moving around:     Adjust Speed:    Cut high/low: I O
       Q   W   E          T  Y  U        Cut on/off:   J K
       A   S   D	                        Loop on/off:  8 9
@@ -161,21 +243,34 @@ class KeyTeleop(object):
     
     """
     self.loginfo(msg)
-    self.showstatuslines()
  
+
+  # Used to move cursor one line up, to enable printing status message repeatidly on the same line
+  def move_cursor_one_line_up(self):
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
+    print(u"\u008D\r"),
+    tty.setraw(sys.stdin.fileno())
+
+  # Used to print satus line, fills terminal width with spaces
+  def logstatusline(self, str):
+
+    # Add extra spaces and truncate to terminal width
+    rows, termWidth = os.popen('stty size', 'r').read().split()
+    str = str + '                                              '
+    str = str[0:int(termWidth)]
+    str = str + '\n'
+
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
+    print(str),
+    tty.setraw(sys.stdin.fileno())
+  
   # Used to print items to screen, while terminal is in funky mode
   def loginfo(self, str):
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
     print(str)
     tty.setraw(sys.stdin.fileno())
 
-  # Used to print items to screen, while terminal is in funky mode
-  def loginfoline(self, str):
-    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
-    print(str),
-    tty.setraw(sys.stdin.fileno())
- 
-  # Used to print teleop status
+    # Used to print teleop status
   def show_status(self):
     msg = 'Status:\tlinear %.2f\tangular %.2f  batA %.1f V  batB %.1f V' % (self.speed[0],self.speed[1],self.batAVolt,self.batBVolt)
     self.loginfo(msg)
@@ -186,9 +281,7 @@ class KeyTeleop(object):
 	# AM_DRIVER COMMANDS
 	#
     
-    if ch == 'h':
-      self.print_usage()
-    elif ch in self.cmd_bindings.keys():
+    if ch in self.cmd_bindings.keys():
       self.command = self.cmd_bindings[ch]
     elif ch in self.set_bindings.keys():
       self.speed = self.speed * (1 + self.set_bindings[ch]*self.inc_ratio)
@@ -280,6 +373,6 @@ class KeyTeleop(object):
 #    return key
  
 if __name__ == '__main__':
-  rospy.init_node('keyboard_teleop')
-  teleop = KeyTeleop()
+  rospy.init_node('HRP_keyboard_teleop')
+  teleop = HRP_Teleop()
   teleop.run()
