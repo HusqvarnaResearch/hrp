@@ -161,6 +161,8 @@ class HRP_Teleop(object):
       status = status + 'PARKED '
     if self.sensorStatus & 0x0040:
       status = status + 'IN_CS '
+    if self.sensorStatus & 0x0800:
+      status = status + 'Charging '
     if self.sensorStatus & 0x0080:
       status = status + 'USER_STOP '
     if self.sensorStatus & 0x0100:
@@ -235,8 +237,9 @@ class HRP_Teleop(object):
       A   S   D	                        Loop on/off:  8 9
       Z   X   C          B  N  M
  
-    1:   Manual mode    2: Random Mode
-    P:   Park           
+    1:   MANUAL mode       
+    2:   RANDOM Mode       5: Inject Collision (random mode)    
+    P:   PARK   Mode       6: Beep	                
     
     G :   Quit
     --------------------------------------------------------
@@ -348,6 +351,16 @@ class HRP_Teleop(object):
       # Enable Loop
       mode = UInt16()
       mode.data = 0x111
+      self.pub_mode.publish(mode)
+    elif ch == '5':
+      # Collsion inject
+      mode = UInt16()
+      mode.data = 0x112
+      self.pub_mode.publish(mode)
+    elif ch == '6':
+      # Beep
+      mode = UInt16()
+      mode.data = 0x401
       self.pub_mode.publish(mode)
     else:
       self.command = np.array([0, 0])
