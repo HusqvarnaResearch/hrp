@@ -143,11 +143,15 @@ include_directories(
 # )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-# install(FILES
-#   # myfile1
-#   # myfile2
-#   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
-# )
+install(FILES
+  urdf/am_chassis.stl
+  urdf/automower.urdf.xacro
+  urdf/materials.urdf.xacro
+  urdf/sensorpos.urdf.xacro
+  urdf/swivel_wheel.urdf.xacro
+  urdf/wheel.urdf.xacro
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/urdf
+)
 
 #############
 ## Testing ##
