@@ -5,3 +5,4 @@ float32 lwheelAccum
 float32 rwheelAccum
 int32 lticks
 int32 rticks
+bool leftWheel

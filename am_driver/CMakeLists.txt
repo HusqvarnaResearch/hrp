@@ -54,6 +54,8 @@ add_message_files(
   CuttingDiscStatus.msg
   Loop.msg
   LoopData.msg
+  MotorFeedback.msg
+  MotorFeedbackDiffDrive.msg
   SensorStatus.msg
   WheelCurrent.msg
   WheelEncoder.msg
@@ -138,10 +140,11 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
-# install(PROGRAMS
-#   scripts/my_python_script
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+install(PROGRAMS
+  scripts/hrp_teleop.py
+  scripts/nanoKontrol2.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS am_driver am_driver_node

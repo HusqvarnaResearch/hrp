@@ -446,6 +446,89 @@
           "value": "6"
         }
       ]
+    },
+    {
+      "name": "tSoundType",
+      "description": "",
+      "type": "uint8",
+      "postfix": "",
+      "enums": [
+        {
+          "key": "SOUND_KEY_CLICK",
+          "description": "Key Click",
+          "value": "0"
+        },
+        {
+          "key": "SOUND_CLICK",
+          "description": "Click Sound",
+          "value": "1"
+        },
+        {
+          "key": "SOUND_CHARGING_CONNECTED",
+          "description": "Charging Connected",
+          "value": "2"
+        },
+        {
+          "key": "SOUND_CHARGING_DISCONNECTED",
+          "description": "Charging Disconnected",
+          "value": "3"
+        },
+        {
+          "key": "SOUND_DOUBLE_BEEP",
+          "description": "Double Beep",
+          "value": "4"
+        },
+        {
+          "key": "SOUND_LONG_BEEP",
+          "description": "Long Beep",
+          "value": "5"
+        },
+        {
+          "key": "SOUND_FAULT",
+          "description": "Fault",
+          "value": "6"
+        },
+        {
+          "key": "SOUND_START_CUTTING",
+          "description": "Start Cutting",
+          "value": "7"
+        },
+        {
+          "key": "SOUND_ALARM_WARNING",
+          "description": "Alarm Warning",
+          "value": "8"
+        },
+        {
+          "key": "SOUND_ALARM_1",
+          "description": "Alarm 1 minute",
+          "value": "9"
+        },
+        {
+          "key": "SOUND_ALARM_2",
+          "description": "Alarm 2 minutes",
+          "value": "10"
+        },
+        {
+          "key": "SOUND_ALARM_5",
+          "description": "Alarm 5 minutes",
+          "value": "11"
+        },
+        {
+          "key": "SOUND_ALARM_10",
+          "description": "Alarm 10 minutes",
+          "value": "12"
+        },
+        {
+          "key": "SOUND_TONE_1",
+          "description": "Tone 1 minute",
+          "value": "13"
+        },
+        {
+          "key": "SOUND_OFF",
+          "description": "Sound Off",
+          "value": "14"
+        }
+      ]
     }
   ],
   "methods": [
@@ -1222,6 +1305,153 @@
       ]
     },
     {
+      "elementType": "function",
+      "family": "Collision",
+      "command": "SetSimulation",
+      "inParams": [
+        {
+          "name": "onOff",
+          "type": "bool"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "onOff",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4166"
+        },
+        {
+          "key": "subCmd",
+          "value": "5"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Collision",
+      "command": "GetSimulation",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "onOff",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4166"
+        },
+        {
+          "key": "subCmd",
+          "value": "6"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Collision",
+      "command": "SetSimulatedStatus",
+      "inParams": [
+        {
+          "name": "status",
+          "type": "uint32"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "status",
+          "type": "uint32"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4166"
+        },
+        {
+          "key": "subCmd",
+          "value": "7"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Collision",
+      "command": "GetSimulatedStatus",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "status",
+          "type": "uint32"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4166"
+        },
+        {
+          "key": "subCmd",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Sound",
+      "command": "SetSoundType",
+      "inParams": [
+        {
+          "name": "soundType",
+          "type": "tSoundType"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "soundType",
+          "type": "tSoundType"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4268"
+        },
+        {
+          "key": "subCmd",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Sound",
+      "command": "GetSoundType",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "soundType",
+          "type": "tSoundType"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4268"
+        },
+        {
+          "key": "subCmd",
+          "value": "1"
+        }
+      ]
+    },
+    {
       "command": "GetComboardSensorData",
       "elementType": "IRS",
       "family": "RealTimeData",
@@ -1263,7 +1493,185 @@
           "value": "140"
         }
       ]
+    },
+    {
+      "command": "GetSensorData",
+      "elementType": "IRS",
+      "family": "RealTimeData",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "collision",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "lift",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "pitch",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "roll",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "zacceleration",
+          "type": "sint16",
+          "length": "2"
+        },
+        {
+          "name": "upsidedown",
+          "type": "uint8",
+          "length": "1"
+        },
+        {
+          "name": "mowertemp",
+          "type": "sint16",
+          "length": "2"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "20"
+        },
+        {
+          "key": "subCmd",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "SafetySupervisor",
+      "command": "GetStatus",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "stopButtonPressed",
+          "type": "bool"
+        },
+        {
+          "name": "onOffSwitchInactive",
+          "type": "bool"
+        },
+        {
+          "name": "lifted",
+          "type": "bool"
+        },
+        {
+          "name": "upsideDown",
+          "type": "bool"
+        },
+        {
+          "name": "tooMuchTilt",
+          "type": "bool"
+        },
+        {
+          "name": "collision3s",
+          "type": "bool"
+        },
+        {
+          "name": "tooFarOutsideBoundary",
+          "type": "bool"
+        },
+        {
+          "name": "noLoopSignalWheels",
+          "type": "bool"
+        },
+        {
+          "name": "pinCodeNeeded",
+          "type": "bool"
+        },
+        {
+          "name": "twoSeperateActionsNeededBlade",
+          "type": "bool"
+        },
+        {
+          "name": "twoSeperateActionsNeededWheels",
+          "type": "bool"
+        },
+        {
+          "name": "warningSoundNeeded",
+          "type": "bool"
+        },
+        {
+          "name": "chargingOngoing",
+          "type": "bool"
+        },
+        {
+          "name": "noLoopSignalBlade",
+          "type": "bool"
+        },
+        {
+          "name": "collisionIsActive",
+          "type": "bool"
+        },
+        {
+          "name": "memNotValidated",
+          "type": "bool"
+        },
+        {
+          "name": "blade10sLift",
+          "type": "bool"
+        },
+        {
+          "name": "blade10sTilt",
+          "type": "bool"
+        },
+        {
+          "name": "blade10sCollision",
+          "type": "bool"
+        },
+        {
+          "name": "bladeUpSideDown",
+          "type": "bool"
+        },
+        {
+          "name": "powerModeLedBroken",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4466"
+        },
+        {
+          "key": "subCmd",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "elementType": "function",
+      "family": "Charger",
+      "command": "IsChargingPowerConnected",
+      "inParams": [],
+      "outParams": [
+        {
+          "name": "isChargingPowerConnected",
+          "type": "bool"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4486"
+        },
+        {
+          "key": "subCmd",
+          "value": "4"
+        }
+      ]
     }
+    
 
 
 

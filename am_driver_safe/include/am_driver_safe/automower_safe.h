@@ -25,6 +25,8 @@
 #include <am_driver/WheelEncoder.h>
 #include <am_driver/WheelCurrent.h>
 #include <am_driver_safe/TifCmd.h>
+#include <am_driver/MotorFeedback.h>
+#include <am_driver/MotorFeedbackDiffDrive.h>
 #include <sensor_msgs/NavSatFix.h>
 
 #include <sys/select.h>
@@ -139,7 +141,7 @@ private:
 class AutomowerSafe
 {
 public:
-    AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate, decision_making::RosEventQueue* eq);
+    AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosEventQueue* eq);
     ~AutomowerSafe();
 
     bool setup();
@@ -161,11 +163,14 @@ public:
 	void loopDetectionHandling();
 	void cuttingHeightHandling();
 	
-	void newControlMainState(int aNewState);
+    void newControlMainState(int aNewState);
+    
+    int GetUpdateRate();
 	
 
 private:
     void velocityCallback(const geometry_msgs::Twist::ConstPtr& vel);
+    void powerCallback(const am_driver::WheelPower::ConstPtr& power);
     void modeCallback(const std_msgs::UInt16::ConstPtr& msg);
     
     std::string resultToString(hcp_tResult result);
@@ -173,17 +178,27 @@ private:
     bool sendMessage(const char* msg, int len, hcp_tResult& result);
     void imuResetCallback(const geometry_msgs::Pose::ConstPtr& msg);
     void regulateVelocity();
-    bool getRealTimeData();
+    void setPower();
+    void sendWheelPower(double power_left,
+                        double power_right);
+    bool getEncoderData();
+    bool getWheelData();
     bool getSensorData();
     bool getPitchAndRoll();
     bool getGPSData();
-    
+    bool getStateData();
+    bool getSensorStatus();
+    bool getLoopData();
+    bool getBatteryData();
+
+    bool isTimeOut(ros::Duration elapsedTime, double frequency);
 
     bool executeTifCommand(am_driver_safe::TifCmd::Request& req,
                                       am_driver_safe::TifCmd::Response& res);
 
     double regulatePid(double current_vel, double wanted_vel);
     bool doSerialComTest();
+    void handleCollisionInjections(ros::Duration dt);
 
     std::string loadJsonModel(std::string fileName);
 
@@ -192,12 +207,14 @@ private:
 
     ros::ServiceServer tifCommandService;
     ros::Subscriber velocity_sub;
+    ros::Subscriber power_sub;
     ros::Subscriber cmd_sub;
     ros::Subscriber imu_sub;
     ros::Subscriber imu_euler_sub;
 
     ros::Publisher pose_pub;
     ros::Publisher odom_pub;
+    ros::Publisher euler_pub;
 
 
     ros::Publisher loop_pub;
@@ -207,17 +224,37 @@ private:
     ros::Publisher encoder_pub;
     ros::Publisher current_pub;
     ros::Publisher wheelPower_pub;
+    ros::Publisher motorFeedbackDiffDrive_pub;
 
 	ros::Publisher navSatFix_pub;
-	
-
-
     tf::TransformBroadcaster br;
 
     
     double updateRate;
+
+    double encoderSensorFreq;
+    double wheelSensorFreq;
+    double regulatorFreq;
+    double setPowerFreq;
+    double stateCheckFreq;
+    double loopSensorFreq;
+    double batteryCheckFreq;
+    double GPSCheckFreq;
+    double pitchRollFreq;
+    double sensorStatusCheckFreq;
+
+    ros::Duration timeSinceWheelSensor;
+    ros::Duration timeSinceEncoderSensor;
+    ros::Duration timeSinceRegulator;
+    ros::Duration timeSinceState;
+    ros::Duration timeSinceLoop;
+    ros::Duration timeSincePitchRoll;
+    ros::Duration timeSincebattery;
+    ros::Duration timeSinceGPS;
+    ros::Duration timeSinceStatus;
+    ros::Duration timeSinceCollision;
     
-    
+
     // Control data
     double lin_vel;
     double ang_vel;
@@ -226,11 +263,12 @@ private:
 
     double xpos, ypos, yaw;
     double wanted_lv, wanted_rv;
+    double wanted_power_left, wanted_power_right;
     double current_lv, current_rv;
     double last_yaw;
     int16_t power_l, power_r;
 
-
+    ros::Time lastEncoderSampeTime;
     bool automowerInterfaceInited;
     int leftPulses;
     int rightPulses;
@@ -265,12 +303,16 @@ private:
     am_driver::WheelEncoder encoder;
     am_driver::WheelCurrent wheelCurrent;
     am_driver::WheelPower wheelPower;
-
-    
+    am_driver::MotorFeedbackDiffDrive motorFeedbackDiffDrive;
 
     int publishTf;
     int velocityRegulator;
+    bool regulateBySpeed;
 
+    bool newSound;
+    char soundCmd[100];
+
+    int collisionState;
 
     // Cutting disc
     bool cuttingDiscOn;
@@ -280,10 +322,7 @@ private:
 
     uint8_t actionResponse;
 
-	bool loopOn;
 	bool requestedLoopOn;
-	
-
 
     // For HCP Library
     hcp_tHost hcpHost;
@@ -301,34 +340,16 @@ private:
     int lastComtestWheelMotorPower;
     double startTime;
 
+    bool startWithoutLoop;
+    bool publishEuler;
 
-    // Battery
-    int batteryCheckCounter;
-    int batteryCheckCounterLimit;
     bool printCharge;
     am_driver::BatteryStatus batteryStatus;
 
-    // Sensor
-    int sensorCheckCounter;
-	int sensorCheckCounterLimit;
-    
-    // Loopdata
-    int loopSensorCheckCounter;
-    int loopSensorCheckCounterLimit;
-
-	
-	// Mode and state
-	int stateCheckCounter;
-    int stateCheckCounterLimit;
-   
-	
-    
     // UserStop
     bool userStop;
     
     // Accelerometer
-    int pitchRollCheckCounter;
-    int pitchRollCheckCounterLimit;
     bool   m_PitchAndRollFromAccelerometer;
     double m_pitch;
     double m_roll;
@@ -336,15 +357,10 @@ private:
   
     
 	// GPS
-    int GPSCheckCounter;
-    int GPSCheckCounterLimit;
 	sensor_msgs::NavSatFix      m_navSatFix_msg;
 	bool						m_publishGPS;
 
-
-    int rateCalcCounter;
-    
-
+    tf::Transform transform;
 
 };
 
