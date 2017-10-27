@@ -1,0 +1,18 @@
+<launch>
+    <!-- urdf xml robot description loaded on the Parameter Server-->
+    <param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
+
+    <node name="am_vive_pos" pkg="am_vive_pos" type="am_vive_pos">
+      <param name="serialUsbPort" value="/dev/ttyACM0" type="str" />
+    </node>
+
+    <!-- source that publishes the joint positions as a sensor_msgs/JointState -->
+    <param name="use_gui" value="false"/>
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+    <!-- publish all the frames to TF -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+      <param name="publish_frequency" value="20"/> <!-- Hz -->
+    </node>
+
+</launch>
