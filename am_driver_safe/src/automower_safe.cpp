@@ -6,6 +6,7 @@
  */
 
 #include "am_driver_safe/automower_safe.h"
+#include "am_driver_safe/amproto.h"
 #include <tf/transform_datatypes.h>
 
 #include <math.h>
@@ -17,37 +18,8 @@
 
 #define DEG2RAD(DEG) ((DEG) * ((M_PI) / (180.0)))
 
-
-// OPERATIONAL MODES (i.e. published in SensorStatus.operationalMode)
-#define AM_OP_MODE_OFFLINE (0x0000)
-#define AM_OP_MODE_CONNECTED_MANUAL (0x0001)
-#define AM_OP_MODE_CONNECTED_RANDOM (0x0002)
-
-// Serial port states
-#define AM_SP_STATE_OFFLINE (0)
-#define AM_SP_STATE_ONLINE (1)
-#define AM_SP_STATE_CONNECTED (2)
-#define AM_SP_STATE_INITIALISING (3)
-#define AM_SP_STATE_ERROR (4)
-
 #define AM_POWER_INCDEC (1)
 #define AM_POWER_THRESHOLD (0.1)
-
-
-// Sensor states
-#define HVA_SS_HMB_CTRL 0x0001
-#define HVA_SS_OUTSIDE 0x0002
-#define HVA_SS_COLLISION 0x0004
-#define HVA_SS_LIFTED 0x0008
-#define HVA_SS_TOO_STEEP 0x0010
-#define HVA_SS_PARKED 0x0020
-#define HVA_SS_IN_CS 0x0040
-#define HVA_SS_USER_STOP 0x0080
-#define HVA_SS_CFG_NEEDED 0x0100
-#define HVA_SS_DISC_ON 0x0200
-#define HVA_SS_LOOP_ON 0x0400
-#define HVA_SS_CHARGING 0x0800
-
 
 // Mower internal modes
 #define IMOWERAPP_MODE_AUTO (0)
@@ -198,7 +170,9 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     n_private.param("startWithoutLoop", startWithoutLoop, true);
     ROS_INFO("Param: startWithoutLoop: [%d]", startWithoutLoop);
 
-
+    bool simulateLoop;
+    n_private.param("simulateLoop", simulateLoop, false);
+    ROS_INFO("Param: simulateLoop: [%d]", simulateLoop);
     // Setup some ROS stuff
     cmd_sub = nh.subscribe("cmd_mode", 5, &AutomowerSafe::modeCallback, this);
 
@@ -211,8 +185,31 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
 
     motorFeedbackDiffDrive_pub = nh.advertise<am_driver::MotorFeedbackDiffDrive>("motor_feedback_diff_drive", 5);
 
+    joyDisabled = true;
+    waitingForRelease = false;
+
+    // Guide Following
+    followGuideState = 0;
+    WireType wireToFollow;
+
+    // Follow In - defaults
+    inCorridorMinWidth = 0;
+    inCorridorMaxWidth = 0;
+    autoDistanceEnabled = 0;
+    wireInGuideCorridor = 0;
+    delayTime = 0;
+    followWireInEnable = 1;
+
+    //Follow out - defaults
+    startPositionId = 1;
+    runningDistance = 100;
+    proportion = 100;
+    startPositionEnable = 1;
+    minMaxDistance = 1;
+
     velocity_sub = nh.subscribe("cmd_vel", 1, &AutomowerSafe::velocityCallback, this);
     power_sub = nh.subscribe("cmd_power", 1, &AutomowerSafe::powerCallback, this);
+    joy_sub = nh.subscribe("nano2", 1, &AutomowerSafe::joyCallback, this);
 
     loop_pub = nh.advertise<am_driver::Loop>("loop", 5);
     sensorStatus_pub = nh.advertise<am_driver::SensorStatus>("sensor_status", 5);
@@ -220,6 +217,8 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     batStatus_pub  = nh.advertise<am_driver::BatteryStatus>("battery_status", 5);
     
     navSatFix_pub = nh.advertise<sensor_msgs::NavSatFix>("GPSfix", 5);
+
+    currentStatus_pub = nh.advertise<am_driver::CurrentStatus>("current_status", 5);
 
     ROS_INFO("Param: publishEuler: [%d]", publishEuler);
     if (publishEuler)
@@ -352,9 +351,17 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     }
 
     m_regulatingActive = false;
-    regulateBySpeed = true;
 
     ROS_INFO("AutomowerSafe::Loaded HCP/TIF codec...let's go!");
+
+
+    if(simulateLoop)
+    {
+        turnOffLoopService = nh.advertiseService("turnOfLoopDetection", &AutomowerSafe::turnOffLoop, this);
+        ROS_INFO("Activating loop callback");
+        sim_loop_sub = nh.subscribe("loop_sim", 1, &AutomowerSafe::simLoopCallback, this);
+
+    }
 }
 
 AutomowerSafe::~AutomowerSafe()
@@ -365,6 +372,261 @@ AutomowerSafe::~AutomowerSafe()
     }
 }
 
+bool AutomowerSafe::turnOffLoop(am_driver_safe::turnOfLoopCmd::Request& req,
+                                      am_driver_safe::turnOfLoopCmd::Response& res)
+{
+    eventQueue->raiseEvent("/LOOPDETECTION_CHANGED");
+}
+
+int AutomowerSafe::sendMessage(unsigned char *msg, int len, unsigned char *ansmsg, int maxAnsLength, bool retry)
+{
+	
+/*
+ 	std::cout << "SEND: " << std::hex;
+	for (int i=0; i<len; i++)
+	{
+		std::cout << "0x" << (int)msg[i] << " ";
+	}
+	std::cout << std::dec << std::endl;
+*/	
+	
+	// Sending
+	int cnt=0;
+	cnt = write(serialFd, msg, len);
+	
+	if(cnt != len)
+	{
+		ROS_ERROR("AutomowerHIL::Could not send on serial port!");
+		return -1;
+	}
+
+	cnt = 0;
+	int res;
+	int payloadLength = 0;
+	
+	// Clear answer buffer
+	memset(ansmsg, 0, maxAnsLength);
+	
+	// Keep reading until we find an STX
+	
+	// receive STX
+	while (ansmsg[cnt] != 0x02)
+	{
+		res = read(serialFd, &ansmsg[cnt], 1);
+	}
+	cnt++;
+
+	// Read MESSAGE TYPE
+	res = read(serialFd, &ansmsg[cnt], 1);
+	//std::cout << "MESSAGE TYPE: " << (int)ansmsg[cnt] << std::endl;
+	cnt++;
+	
+	// Read LENGTH
+	res = read(serialFd, &ansmsg[cnt], 1);
+	payloadLength = ansmsg[cnt];
+	//std::cout << "PAYLOAD LENGTH: " << (int)payloadLength << std::endl;
+	cnt++;
+	
+	// Read PAYLOAD
+	unsigned char readBytes = 0;
+	unsigned max_retries = 100;
+	while ((readBytes < payloadLength) && (max_retries > 0))
+	{
+		int bytes = read(serialFd, &ansmsg[cnt], payloadLength-readBytes);
+		if (bytes > 0)
+		{
+			readBytes += bytes;
+			cnt += bytes;
+		}
+		max_retries--;
+	}
+	
+	// Read CRC
+	// TODO: Use it!
+	res = read(serialFd, &ansmsg[cnt], 1);
+	cnt++;
+
+	// Read ETX
+	res = read(serialFd, &ansmsg[cnt], 1);
+	cnt++;
+
+/*
+	std::cout << "CNT: " << cnt << std::endl;
+	std::cout << "RESPONSE: " << std::hex;
+	for (int i=0; i<cnt; i++)
+	{
+		std::cout << "0x" << (int)ansmsg[i] << " ";
+	}
+	std::cout << std::dec << std::endl;
+*/
+
+	// Check some stuff
+	if (ansmsg[0] != 0x02)
+	{
+		// FAILED
+		return 0;
+	}
+	if (ansmsg[cnt-1] != 0x03)
+	{
+		// FAILED
+		return 0;
+	}
+
+	return cnt;
+
+}
+
+void AutomowerSafe::simLoopCallback(const am_driver::Loop& msg)
+{
+    ROS_INFO("Recieving Loop values");
+    hcp_tResult result;
+    if(firstLoopCallback)
+    {
+        ROS_INFO("First run!");
+        firstLoopCallback = false;
+        const char* msg1 = "GardenSimulator.SetSimulator(id:7,value:100)";
+
+        if (!sendMessage(msg1, sizeof(msg1), result))
+        {
+            ROS_WARN("Error in setting loop quality!");
+        }
+        return;
+    }
+
+    char msg1[100];
+
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:8,value:%i)",msg.A0.frontCenter);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:9,value:%i)",msg.A0.frontRight);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:10,value:%i)",msg.A0.rearLeft);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:11,value:%i)",msg.A0.rearRight);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+/*
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:12,value:%i)",msg.G1.frontCenter);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:13,value:%i)",msg.G1.frontRight);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:14,value:%i)",msg.G1.rearLeft);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:15,value:%i)",msg.G1.rearRight);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:16,value:%i)",msg.G2.frontCenter);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:17,value:%i)",msg.G2.frontRight);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:18,value:%i)",msg.G2.rearLeft);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:19,value:%i)",msg.G2.rearRight);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:20,value:%i)",msg.G3.frontCenter);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:21,value:%i)",msg.G3.frontRight);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:22,value:%i)",msg.G3.rearLeft);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:23,value:%i)",msg.G3.rearRight);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:24,value:%i)",msg.N.frontCenter);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:25,value:%i)",msg.N.frontRight);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:26,value:%i)",msg.N.rearLeft);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:27,value:%i)",msg.N.rearRight);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    */
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:28,value:%i)",msg.F.frontCenter);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:29,value:%i)",msg.F.frontRight);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:30,value:%i)",msg.F.rearLeft);
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+    snprintf(msg1, sizeof(msg1), "GardenSimulator.SetSimulator(id:31,value:%i)",msg.F.rearRight);
+
+    if (!sendMessage(msg1, sizeof(msg1), result))
+    {
+        ROS_WARN("Error in sending loop-values!");
+    }
+
+}
 
 bool AutomowerSafe::executeTifCommand(am_driver_safe::TifCmd::Request& req,
                                       am_driver_safe::TifCmd::Response& res)
@@ -528,7 +790,7 @@ void AutomowerSafe::imuResetCallback(const geometry_msgs::Pose::ConstPtr& msg)
 
 void AutomowerSafe::velocityCallback(const geometry_msgs::Twist::ConstPtr& vel)
 {
-    regulateBySpeed = true;
+    velocityRegulator = true;
 
     lin_vel = (double)vel->linear.x;
     ang_vel = (double)vel->angular.z;
@@ -542,12 +804,113 @@ void AutomowerSafe::velocityCallback(const geometry_msgs::Twist::ConstPtr& vel)
 
 void AutomowerSafe::powerCallback(const am_driver::WheelPower::ConstPtr& power)
 {
-    regulateBySpeed = false;
+    velocityRegulator = false;
 
     wanted_power_left = power->left;
     wanted_power_right = power->right;
 
     ROS_INFO("wanted_power: %f", wanted_power_left);
+}
+
+void AutomowerSafe::joyCallback(const sensor_msgs::Joy::ConstPtr& j)
+{
+
+    double dummy;
+    double sliderScale[8] = {50, 50, 50, 50, 50, 50, 50, 50};
+    double sliderOffset[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    double *sliderVar[8] = {&wheelSensorFreq, &encoderSensorFreq,&regulatorFreq,&loopSensorFreq,&dummy,&dummy,&dummy,&dummy};
+    double knobScale[8] = {50, 50, 50, 50, 50, 50, 50, 50};
+    double knobOffset[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    double *knobVar[8] = {&dummy, &dummy,&dummy,&dummy,&dummy,&dummy,&dummy,&dummy};
+
+    // Special case to handle key release event...
+    if (waitingForRelease)
+    {
+        waitingForRelease = false;
+        return;
+    }
+
+    // Need to "enable" this before use of params...
+    if (joyDisabled)
+    {
+        // Pressing R[7]
+        if (j->buttons[25 + 16 + 7] == 1)
+        {
+            joyDisabled = false;
+            waitingForRelease = true;
+            ROS_INFO("FusePos::NANO KONTROL enabled!");
+        }
+
+        // Always return...
+        return;
+    }
+    else
+    {
+        // Pressing  R[0]
+        if (j->buttons[25 + 16 + 0] == 1)
+        {
+            joyDisabled = true;
+            waitingForRelease = true;
+            ROS_INFO("FusePos::NANO KONTROL disabled!");
+            return;
+        }
+        // REC
+        else if (j->buttons[8] == 1)
+        {
+
+            waitingForRelease = true;
+            ROS_INFO("FusePos::NANO KONTROL start recording!");
+            return;
+        }
+    }
+
+    if (j->buttons[1] == 1)
+    {
+        waitingForRelease = true;
+    }
+    else
+    {
+        ROS_INFO("#### NEW PARAMETERS ####");
+
+        // Live tweaking of params...
+        //
+        // SLIDERS
+        //
+        for (int i = 0; i < 8; i++)
+        {
+            if (j->axes[i] != 0)
+            {
+                *sliderVar[i] = sliderScale[i] * j->axes[i] + sliderOffset[i];
+                ROS_INFO("AutomowerSafe::sliderVar[%d] = %f",i, *sliderVar[i]);
+            }
+        }
+
+        //
+        // KNOBS
+        //
+        for (int i = 0; i < 8; i++)
+        {
+            if (j->axes[8 + i] != 0)
+            {
+                *knobVar[i] = knobScale[i] * j->axes[8 + i] + knobOffset[i];
+                ROS_INFO("AutomowerSafe::knobVar[%d] = %f",i, *knobVar[i]);
+            }
+        }
+    }
+}
+
+void AutomowerSafe::setManualMode()
+{
+        requestedState = AM_STATE_MANUAL;
+        ROS_INFO("AutoMowerSafe: Manual Mode Requested");
+        eventQueue->raiseEvent("/MANUAL");
+}
+
+void AutomowerSafe::setRandomMode()
+{
+        requestedState = AM_STATE_RANDOM;
+        ROS_INFO("AutoMowerSafe: Random Mode Requested");
+        eventQueue->raiseEvent("/RANDOM");
 }
 
 void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
@@ -560,15 +923,11 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
 
     if (msg->data == 0x90)
     {
-        requestedState = AM_STATE_MANUAL;
-        ROS_INFO("AutoMowerSafe: Manual Mode Requested");
-        eventQueue->raiseEvent("/MANUAL");
+        setManualMode();
     }
     else if (msg->data == 0x91)
     {
-        requestedState = AM_STATE_RANDOM;
-        ROS_INFO("AutoMowerSafe: Random Mode Requested");
-        eventQueue->raiseEvent("/RANDOM");
+        setRandomMode();
     }
     else if (msg->data == 0x92)
     {
@@ -641,13 +1000,37 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
         ROS_WARN("Rebooting...bye bye...");
         system("sudo reboot");
     }
-    // Sound commands
+    // Sound commands, 0x400 is a nice little beep and then they get increasingly annoying (full Alarm 10 minutes for example)
+    // Use 0x40E to shut the sound off
     else if (msg->data >= 0x400 && msg->data <= 0x40E )
     {
         newSound = true;
         int soundType = msg->data - 0x400;
 
         snprintf(soundCmd, sizeof(soundCmd), "Sound.SetSoundType(soundType:%d) ",soundType);
+    }
+    // 0x410: Stop folloing guides and enter MANUAL mode (need to actively switch to RANDOM if desired)
+    else if (msg->data == 0x410)
+    {
+        followGuideState = 255;
+    }
+    //0x411: Follow G1, this may be laid out as an Island if an infinite follow loop sequence is desired
+    else if (msg->data == 0x411)
+    {
+        followGuideState = 1;
+        wireToFollow = wire_G1;
+    }
+    //0x412: Follow G2, this can be used to actually get home after following the infinite loop G1, if laid out properly.
+    else if (msg->data == 0x412)
+    {
+        followGuideState = 1;
+        wireToFollow = wire_G2;
+    }
+    //0x413: Follow G3, may be used on 450x (where there actually is a third guide, not on 430X)
+    else if (msg->data == 0x413)
+    {
+        followGuideState = 1;
+        wireToFollow = wire_G3;
     }
     else
     {
@@ -669,6 +1052,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     if ((serialPortState == AM_SP_STATE_OFFLINE) || (serialPortState == AM_SP_STATE_ERROR))
     {
         mtx_serial.unlock();
+        ROS_ERROR("sendMessage: serialPort is OFFLINE or in ERROR mode - %s", msg);
         return false;
     }
 
@@ -707,7 +1091,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
 
     if (cnt != numBytes)
     {
-        ROS_ERROR("Automower::Could not send on serial port!");
+        ROS_ERROR("Automower::Could not send on serial port - %s", msg);
         serialPortState = AM_SP_STATE_ERROR;
         return false;
     }
@@ -752,6 +1136,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
         if (serialLog) {std::cout << "\n first read byte is zero => FAILED!  res = " << res << "  buf[0]= " << int(buf[0]) << " errno =" << errno  << "respTime " << responseTime  <<std::endl;}
         serialPortState = AM_SP_STATE_ERROR;
         mtx_serial.unlock();
+        ROS_ERROR("sendMessage: Failed while trying - %s", msg);
         return false;
     }
 
@@ -779,11 +1164,12 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
 
             if (serialLog) {std::cout << "first read byte is zero => FAILED!  res = " << res << "  buf[0]= " << int(buf[0]) << " errno =" << errno  << "respTime " << responseTime  <<std::endl;}
             serialPortState = AM_SP_STATE_ERROR;
+            ROS_ERROR("sendMessage: Failed while trying - %s", msg);
             return false;
         }
     }
 
-    if (serialLog) {  std::cout << std::dec << std::endl; }
+    if (serialLog) {  std::cout << std::dec << " " << msg << " " << std::endl; }
 
     if (res <= 0)
     {
@@ -791,6 +1177,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
         serialPortState = AM_SP_STATE_ERROR;
 
         mtx_serial.unlock();
+        ROS_ERROR("sendMessage: Failed while trying - %s", msg);
         return false;
     }
 
@@ -798,6 +1185,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     {
         ROS_WARN("Automower::Error receiving...not logged in?");
         mtx_serial.unlock();
+        ROS_ERROR("sendMessage: Failed while trying - %s", msg);
         return false;
     }
 
@@ -840,7 +1228,7 @@ bool AutomowerSafe::initAutomowerBoard()
         return false;
     }
 
-    if ((mowerType == 7) || (mowerType == 8))    // 430x OR 450X
+    if ((mowerType == 7) || (mowerType == 8) || (mowerType == 16))    // 430x OR 450X OR 550
     {
         // Get some stuff out from the mower...
         AUTMOWER_WHEEL_BASE_WIDTH = 0.464500;
@@ -861,6 +1249,14 @@ bool AutomowerSafe::initAutomowerBoard()
         AUTMOWER_WHEEL_BASE_WIDTH = 0.3314; // Jonathan Björn
         WHEEL_DIAMETER = 0.210;
         WHEEL_PULSES_PER_TURN = 1188; //12*1:99 according to floor one
+        WHEEL_METER_PER_TICK = (2.0 * M_PI * WHEEL_DIAMETER / 2.0) / (double)WHEEL_PULSES_PER_TURN;
+    }
+    else if (mowerType == 13) //P15 Gardena
+    {
+        //Best guesses... todo check really
+        AUTMOWER_WHEEL_BASE_WIDTH = 0.370; // Jonathan Björn
+        WHEEL_DIAMETER = 0.210;
+        WHEEL_PULSES_PER_TURN = 1192; 
         WHEEL_METER_PER_TICK = (2.0 * M_PI * WHEEL_DIAMETER / 2.0) / (double)WHEEL_PULSES_PER_TURN;
     }
 
@@ -1189,7 +1585,7 @@ bool AutomowerSafe::getGPSData()
         m_navSatFix_msg.longitude = longitude;
         m_navSatFix_msg.altitude  = 0.0;
 
-        for (int i=0; i++; i<9)
+        for (int i=0; i<9;i++)
         {
             m_navSatFix_msg.position_covariance[i]  = covariance;
         }
@@ -1262,14 +1658,12 @@ bool AutomowerSafe::getStateData()
     return true;
 }
 
-bool AutomowerSafe::getSensorStatus()
+bool AutomowerSafe::getLoopDetection()
 {
     hcp_tResult result;
-
     //
     // SensorStatus
     //
-    sensorStatus.sensorStatus = 0;
 
     const char* loopMsg = "SystemSettings.GetLoopDetection()";
     if (!sendMessage(loopMsg, sizeof(loopMsg), result))
@@ -1294,6 +1688,12 @@ bool AutomowerSafe::getSensorStatus()
     {
         sensorStatus.sensorStatus |= HVA_SS_PARKED;
     }
+    return true;
+}
+
+bool AutomowerSafe::getStatus()
+{
+    hcp_tResult result;
     //
     // STOP button
     //
@@ -1349,7 +1749,12 @@ bool AutomowerSafe::getSensorStatus()
 
         userStop = false;
     }
+    return true;
+}
 
+bool AutomowerSafe::getChargingPowerConnected()
+{
+    hcp_tResult result;
 
     // Check if inside charging station
     const char* msgCPC = "Charger.IsChargingPowerConnected()";
@@ -1361,17 +1766,23 @@ bool AutomowerSafe::getSensorStatus()
     {
         // 1 - Active,
         if (result.parameters[0].value.b == 1)
-		{
-			sensorStatus.sensorStatus |= HVA_SS_IN_CS;
-			userStop = false;
-		}
-		else
-		{
-			sensorStatus.sensorStatus &= ~HVA_SS_IN_CS;
-			userStop = false;
-		}
+        {
+            sensorStatus.sensorStatus |= HVA_SS_IN_CS;
+            userStop = false;
+        }
+        else
+        {
+            sensorStatus.sensorStatus &= ~HVA_SS_IN_CS;
+            userStop = false;
+        }
     }
 
+    return true;
+}
+
+bool AutomowerSafe::getStatusKeepAlive()
+{
+    hcp_tResult result;
 
     // Send Keep alive message to prevent automower to go to sleep mode
     const char* msgK = "CurrentStatus.GetStatusKeepAlive()";
@@ -1379,7 +1790,65 @@ bool AutomowerSafe::getSensorStatus()
     {
         return false;
     }
+    // Send Keep alive message to prevent automower to go to sleep mode
+    currentStatus.header.stamp = ros::Time::now();
+    currentStatus.state = -1;
+    currentStatus.subState = -1;
+    currentStatus.mode = -1;
+    if (result.parameterCount >= 5)
+    {
+        currentStatus.state = result.parameters[0].value.u8;
+        currentStatus.subState = result.parameters[1].value.u8;
+        currentStatus.mode = result.parameters[2].value.u8;
+    }
 
+    return true;
+}
+
+bool AutomowerSafe::getSensorStatus()
+{
+    hcp_tResult result;
+
+    sensorStatus.sensorStatus = 0;
+
+    if (!getLoopDetection())
+    {
+        return false;
+    }
+
+    if (!getStatus())
+    {
+        return false;
+    }
+
+    const char* realTimeSensorStatusMsg = "RealTimeData.GetSensorData()";
+    if (!sendMessage(realTimeSensorStatusMsg, sizeof(realTimeSensorStatusMsg), result))
+    {
+        ROS_WARN("Can't get realTimeSensorStatusMsg status");
+        return false;
+    }
+    if (result.parameters[0].value.b)
+    {
+        ROS_INFO("Collision");
+        sensorStatus.sensorStatus |= HVA_SS_COLLISION;
+    }
+    else
+    {
+        sensorStatus.sensorStatus &= ~HVA_SS_COLLISION;
+
+        userStop = false;
+    }
+
+    if (!getChargingPowerConnected())
+    {
+        return false;
+    }
+
+    // Send Keep alive message to prevent automower to go to sleep mode
+    if (!getStatusKeepAlive())
+    {
+        return false;
+    }
     return true;
 }
 
@@ -1441,7 +1910,77 @@ bool AutomowerSafe::getLoopData()
 
     return true;
 }
+/*
+// An alternative function to the one above. This one gets the value for all the sensors,
+// but they might be less up to date than in the one above
+bool AutomowerSafe::getLoopData()
+{
+    hcp_tResult result;
 
+    //
+    // LoopSensor
+    //
+
+    const char* loopFrontC = "RealTimeData.GetFrontCenterLoopSensorData()";
+    if ( !sendMessage( loopFrontC, sizeof( loopFrontC ), result ) )
+    {
+        return false;
+    }
+
+    // Compability
+    loop.frontCenter = result.parameters[ 1 ].value.i16;
+    loop.A0.frontCenter = result.parameters[ 1 ].value.i16;
+    loop.F.frontCenter = result.parameters[ 2 ].value.i16;
+    loop.G1.frontCenter = result.parameters[ 3 ].value.i16;
+    loop.G2.frontCenter = result.parameters[ 4 ].value.i16;
+    loop.G3.frontCenter = result.parameters[ 8 ].value.i16;
+    loop.N.frontCenter = result.parameters[ 7 ].value.i16;
+
+    const char* loopFrontR = "RealTimeData.GetFrontRightLoopSensorData()";
+    if ( !sendMessage( loopFrontR, sizeof( loopFrontR ), result ) )
+    {
+        return false;
+    }
+    // Compability
+    loop.frontRight = result.parameters[ 1 ].value.i16;
+    loop.A0.frontRight = result.parameters[ 1 ].value.i16;
+    loop.F.frontRight = result.parameters[ 2 ].value.i16;
+    loop.G1.frontRight = result.parameters[ 3 ].value.i16;
+    loop.G2.frontRight = result.parameters[ 4 ].value.i16;
+    loop.G3.frontRight = result.parameters[ 8 ].value.i16;
+    loop.N.frontRight = result.parameters[ 7 ].value.i16;
+
+    const char* loopRearL = "RealTimeData.GetRearLeftLoopSensorData()";
+    if ( !sendMessage( loopRearL, sizeof( loopRearL ), result ) )
+    {
+        return false;
+    }
+    // Compability
+    loop.rearLeft = result.parameters[ 1 ].value.i16;
+    loop.A0.rearLeft = result.parameters[ 1 ].value.i16;
+    loop.F.rearLeft = result.parameters[ 2 ].value.i16;
+    loop.G1.rearLeft = result.parameters[ 3 ].value.i16;
+    loop.G2.rearLeft = result.parameters[ 4 ].value.i16;
+    loop.G3.rearLeft = result.parameters[ 8 ].value.i16;
+    loop.N.rearLeft = result.parameters[ 7 ].value.i16;
+
+    const char* loopRearR = "RealTimeData.GetRearRightLoopSensorData()";
+    if ( !sendMessage( loopRearR, sizeof( loopRearR ), result ) )
+    {
+        return false;
+    }
+    // Compability
+    loop.rearRight = result.parameters[ 1 ].value.i16;
+    loop.A0.rearRight = result.parameters[ 1 ].value.i16;
+    loop.F.rearRight = result.parameters[ 2 ].value.i16;
+    loop.G1.rearRight = result.parameters[ 3 ].value.i16;
+    loop.G2.rearRight = result.parameters[ 4 ].value.i16;
+    loop.G3.rearRight = result.parameters[ 8 ].value.i16;
+    loop.N.rearRight = result.parameters[ 7 ].value.i16;
+
+    return true;
+}
+*/
 bool AutomowerSafe::getBatteryData()
 {
     hcp_tResult result;
@@ -1642,6 +2181,191 @@ bool AutomowerSafe::isTimeOut(ros::Duration elapsedTime, double frequency)
     return false;
 }
 
+/**
+ * Failing to send will reset state machine to zero
+ * Sucess will increment state
+ * */
+void AutomowerSafe::sendGuideCommand(std::string cmd, double delaySec, ros::Duration dt)
+{
+
+    guideTimer += dt;
+    if (guideTimer.toSec() > delaySec)
+    {
+        hcp_tResult result;
+        const char* msg = cmd.c_str();
+        if (!sendMessage(msg, sizeof(msg), result))
+        {
+            eventQueue->raiseEvent("/COM_ERROR");
+            ROS_WARN("sendGuideCommand failed!");
+            followGuideState = 0;
+        }
+        
+        ROS_INFO("%d: Sending: %s",followGuideState, msg);
+        std::string strRes;
+        strRes = resultToString(result);
+        std::cout << strRes << std::endl;
+
+        guideTimer = ros::Duration(0.0);
+        ++followGuideState;
+    }
+}
+
+void AutomowerSafe::handleFollowGuide(ros::Duration dt)
+{
+    hcp_tResult result;
+    std::stringstream message;
+    char buf[200];
+    switch (followGuideState)
+    {   
+        //Dont do anything until triggered
+        case 0:
+            break;
+
+
+        case 1: //Simulate Stop Button
+        { 
+            sendGuideCommand("StopButton.SetSimulation(simOnOff:1)", 0.1, dt);
+            break;
+        }
+
+        case 2: // Press stop
+        {
+            sendGuideCommand("StopButton.SetSimValue(switchOnOff:1)", 0.1, dt);
+            break;
+        }
+
+        case 3: // Enter RANDOM mode
+        {
+            setRandomMode();
+            ++followGuideState;
+            break;
+        }
+
+        case 4: //Disable GPS
+        {
+            sendGuideCommand("DrivingSettings.SetGpsSettings(GPSNavigationEnable:0)", 0.1, dt);
+            break;
+        }
+
+        case 5: //Configure width (driving over guide for best accuracy (?))
+        {
+            
+            sprintf(buf,    "DrivingSettings.SetCorridor(loopWire:%d, minDistToWire:%d,     maxDistToWire:%d,   wireInGuideCorridor:%d, autoDistanceEnable:%d)", 
+                                                        wireToFollow, inCorridorMinWidth,   inCorridorMaxWidth, wireInGuideCorridor,    autoDistanceEnabled );
+            sendGuideCommand(std::string(buf), 0.1, dt);
+            break;
+        }
+        case 6: //Configure the properties (follow G1, no delay)
+        {
+            sprintf(buf, "DrivingSettings.SetFollowWireIn(  loopWire:%d, delayTime:%d, followWireInEnable:%d)",
+                                                            wireToFollow, delayTime, followWireInEnable);
+            sendGuideCommand(std::string(buf), 0.1, dt);
+            break;
+        }
+        case 7: //Activate following
+        {
+            sprintf(buf, "DrivingSettings.SetTestFollowWireIn(loopWire:%d)", wireToFollow);
+            sendGuideCommand(std::string(buf), 0.3, dt);
+            break;
+        }        
+        case 8: //Set F-field as week as possible
+        {
+            sprintf(buf,"DrivingSettings.SetCSRange(range:%d)", CS_Range_min);
+            sendGuideCommand(std::string(buf), 0.1, dt);
+        }
+        case 9: //Issue the command
+        {
+            sendGuideCommand("MowerCommands.TestFollowIn()", 0.2, dt);
+            break;
+        }
+
+        case 10: //Do the start sequence
+        {
+            sendGuideCommand("MowerCommands.PrepareStart()", 0.3, dt);
+            break;
+        }
+
+        case 11: //Close it the hatch
+        {
+            sendGuideCommand("StopButton.SetSimValue(switchOnOff:0)", 0.3, dt);
+            break;
+        }
+
+        case 12: //Stop simulating the hatch
+        {
+            sendGuideCommand("StopButton.SetSimulation(simOnOff:0)", 0.1, dt);
+            break;
+        }
+        case 13: //Done
+        {
+            followGuideState = 0;
+            break;
+        }
+
+        //Abort the following, and enter manual mode------------
+        
+        case 255: //Start simulating the hatch
+        {
+            sendGuideCommand("StopButton.SetSimulation(simOnOff:1)", 0.3, dt);
+            break;
+        }
+
+        case 256: //Open the hatch
+        {
+            sendGuideCommand("StopButton.SetSimValue(switchOnOff:1)", 0.3, dt);
+            break;
+        }
+
+        case 257: //Command stop following
+            sendGuideCommand("MowerCommands.StopFollowWire()", 0.3, dt);
+            break;
+
+        case 258: // Enter MANUAL mode
+        {
+            setManualMode();
+            ++followGuideState;
+            break;
+        }
+
+        case 259: //Do the start sequence
+        {
+            sendGuideCommand("MowerCommands.PrepareStart()", 0.3, dt);
+            break;
+        }
+
+        case 260: //Close the hatch
+        {
+            sendGuideCommand("StopButton.SetSimValue(switchOnOff:0)", 0.3, dt);
+            break;
+        }
+
+        case 261: //Stop simulating the hatch
+        {
+            sendGuideCommand("StopButton.SetSimulation(simOnOff:0)", 0.3, dt);
+            break;
+        }
+
+        case 262: //Set F-field as strong as possible
+        {
+            sprintf(buf,"DrivingSettings.SetCSRange(range:%d)", CS_Range_max);
+            sendGuideCommand(std::string(buf), 0.1, dt);
+        }
+
+        case 263: //Done
+        {
+            followGuideState = 0;
+            break;
+        }
+
+        default:
+            followGuideState = 0;
+            break;
+    }
+
+    return;
+}
+
+
 void AutomowerSafe::handleCollisionInjections(ros::Duration dt)
 {
     switch (collisionState)
@@ -1788,7 +2512,7 @@ bool AutomowerSafe::update(ros::Duration dt)
         }
         else
         {
-            ROS_INFO("WAITING");
+            ROS_INFO("WAITING\b");
         }
 
     }
@@ -1852,7 +2576,7 @@ bool AutomowerSafe::update(ros::Duration dt)
         }
         if (isTimeOut(timeSinceRegulator, regulatorFreq))
         {
-            if (regulateBySpeed)
+            if (velocityRegulator)
             {
                 regulateVelocity();
 //                double rate = 1.0/timeSinceRegulator.toSec();
@@ -1919,6 +2643,7 @@ bool AutomowerSafe::update(ros::Duration dt)
         }
 
         handleCollisionInjections(dt);
+        handleFollowGuide(dt);
     }
 
     if (!newData)
@@ -2081,6 +2806,10 @@ bool AutomowerSafe::update(ros::Duration dt)
         sensorStatus.header.stamp = current_time;
         sensorStatus.header.frame_id = "odom";
         sensorStatus_pub.publish(sensorStatus);
+
+        currentStatus.header.stamp = current_time;
+        currentStatus.header.frame_id = "odom";
+        currentStatus_pub.publish(currentStatus);
     }
 
     return true;
@@ -2220,5 +2949,23 @@ int AutomowerSafe::GetUpdateRate()
 {
     return updateRate;
 }
+
+void AutomowerSafe::clearOverRide()
+{
+    hcp_tResult result;
+    DEBUG_LOG("AutoMowerSafe::clearOverride()" );
+
+    const char* msg = "Planner.ClearOverride()";
+
+    if (!sendMessage(msg, sizeof(msg), result))
+    {
+        eventQueue->raiseEvent("/COM_ERROR");
+    }
+
+}
+	
+
+
+
 
 }

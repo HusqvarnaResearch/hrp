@@ -1670,10 +1670,24 @@
           "value": "4"
         }
       ]
+    },
+    {
+      "elementType": "function",
+      "family": "Planner",
+      "command": "ClearOverride",
+      "inParams": [],
+      "outParams": [],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "4658"
+        },
+        {
+          "key": "subCmd",
+          "value": "6"
+        }
+      ]
     }
     
-
-
-
   ]
 }

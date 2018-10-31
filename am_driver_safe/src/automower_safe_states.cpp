@@ -237,6 +237,8 @@ FSM(AutoMowerSafeStates)
 			// ON ENTRY
 			m_driver->newControlMainState(AM_STATE_RANDOM);
 			m_driver->setAutoMode();
+			// clear all overRides makes mower leave CS when battery is fully charged
+			m_driver->clearOverRide();
 			m_driver->startMower();
 			m_driver->cutDiscHandling();
 

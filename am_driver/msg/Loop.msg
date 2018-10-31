@@ -9,5 +9,7 @@ LoopData F
 LoopData G1
 LoopData G2
 LoopData G3
-LoopData QA0 
+LoopData QA0
+LoopData QF
+LoopData QN 
  

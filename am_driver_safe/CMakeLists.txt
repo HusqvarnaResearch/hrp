@@ -62,6 +62,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_service_files(
   FILES
   TifCmd.srv
+  turnOfLoopCmd.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -111,7 +112,8 @@ include_directories(include include/hcp ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp executable
 add_executable(am_driver_safe_node
-    src/am_driver_safe_node.cpp src/automower_safe.cpp src/automower_safe_states.cpp
+    src/am_driver_safe_node.cpp src/automower_safe.cpp src/automower_safe_states.cpp src/automower_strict.cpp
+    src/amproto.cpp
     src/hcp/cJSON.c
     src/hcp/hcp_library.c
     src/hcp/hcp_runtime.c
@@ -165,11 +167,20 @@ install(TARGETS am_driver_safe_node
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
+  launch/automower.launch
   launch/automower_hrp.launch
+  launch/el_cheapo.launch
+  launch/automower_rab.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
 
 install(FILES
+  config/31.7_Main-App-P2_H585920_161123-152100_Debug.json
+  config/31.7_Main-App-P2_master_build-542_Debug.json
+  config/31.7_Main-App-P2_master_build-609_Debug.json
+  config/31.7_Main-App-P2-Debug_release-10.20.json
+  config/31.7_P2_Main_App-Certified_master_build_285-Debug.json
+  config/31.9_Main-App-P0-Debug_h502899_170904-134048.json
   config/automower_hrp.json
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
 )

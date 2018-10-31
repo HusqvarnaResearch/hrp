@@ -30,11 +30,25 @@ int main( int argc, char** argv )
 
     ros::NodeHandle n;
 
-
     ros::Time lastTime;
 
     eventQueue = new decision_making::RosEventQueue();
-    Husqvarna::AutomowerSafePtr am(new Husqvarna::AutomowerSafe(n,eventQueue));
+
+    // Setup driver type
+    ros::NodeHandle n_private("~");
+    int driverType;
+    n_private.param("driverType", driverType, static_cast<int>(Husqvarna::SD_SAFE));
+    ROS_INFO_STREAM("Param: driverType: " << driverType);
+
+    Husqvarna::AutomowerSafePtr am;
+    if (driverType == Husqvarna::SD_SAFE)
+    {
+        am.reset(new Husqvarna::AutomowerSafe(n,eventQueue));
+    }
+    else if (driverType == Husqvarna::SD_STRICT)
+    {
+        am.reset(new Husqvarna::AutomowerStrict(n,eventQueue));
+    }
     Husqvarna::ConnectDriverAndStates(am);
 
     double updateRate = am->GetUpdateRate();
@@ -50,7 +64,6 @@ int main( int argc, char** argv )
 
     std::thread fsmThread = std::thread(&stateMachineThread1);
 
-
     while( ros::ok() )
     {
         ros::Time current_time = ros::Time::now();
@@ -59,8 +72,10 @@ int main( int argc, char** argv )
         am->update(dt);
 
         ros::spinOnce();
+        current_time = ros::Time::now();
         rate.sleep();
-
+        dt = ros::Time::now() - current_time;
+        ROS_DEBUG_STREAM("am_driver_safe_node sleep: " << dt.nsec / 1e6 << " ms");
     }
 
     if ( fsmThread.joinable() )

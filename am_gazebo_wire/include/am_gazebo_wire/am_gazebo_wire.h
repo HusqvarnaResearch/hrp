@@ -9,6 +9,7 @@
 #include <gazebo/common/Time.hh>
 #include <gazebo/common/Plugin.hh>
 #include <gazebo/common/Events.hh>
+#include <ignition/math/Pose3.hh>
 
 #include <am_driver/Loop.h>
 #include <am_driver/LoopData.h>
@@ -46,7 +47,7 @@ private:
 	void InitPlugin();
 	bool rosStarted;
 	
-	int GetLoopValue(math::Pose pose,const loopData& loop);
+	int GetLoopValue(const ignition::math::Pose3d& pose,const loopData& loop);
 
 
 
@@ -60,7 +61,7 @@ private:
 	physics::LinkPtr  theGardenLink;
 	
 	// Used for loop/wire calculations from and Image
-	math::Pose gardenPose;
+	ignition::math::Pose3d gardenPose;
 	std::string wireBitmapName;
 
 
@@ -69,7 +70,7 @@ private:
 	std::vector<loopData> loopVec;
 
 
-	int16_t GetMagValue(math::Pose pose);
+	int16_t GetMagValue(const ignition::math::Pose3d& pose);
 	void ExtractBinData(const std::string& filename,loopData& loop);
 	void ExtractImageData(const std::string& filename,loopData& loop);
 

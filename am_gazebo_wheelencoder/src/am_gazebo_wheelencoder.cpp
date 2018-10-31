@@ -87,8 +87,15 @@ void GazeboRosWheelEncoder::Load( physics::ModelPtr _parent, sdf::ElementPtr _sd
 		return;
 	}
 
-	lastLeftAngle = leftWheelJoint->GetAngle(0).Radian();
+#if GAZEBO_MAJOR_VERSION >= 8
+   lastLeftAngle = leftWheelJoint->Position ( 0 );
+	lastRightAngle = rightWheelJoint->Position ( 0 );
+#else
+   lastLeftAngle = leftWheelJoint->GetAngle(0).Radian();
 	lastRightAngle = rightWheelJoint->GetAngle(0).Radian();
+#endif
+
+	
 
  	// listen to the update event (broadcast every simulation iteration)
 	//updateConnection = event::Events::ConnectWorldUpdateBegin ( boost::bind ( &GazeboRosWheelEncoder::Update, this ) );
@@ -109,7 +116,12 @@ void GazeboRosWheelEncoder::Update()
 	// Get the actual angle of the Joints
 	
 	// LEFT
-	double leftAngle = leftWheelJoint->GetAngle(0).Radian();
+#if GAZEBO_MAJOR_VERSION >= 8
+   double leftAngle = leftWheelJoint->Position ( 0 );
+#else
+   double leftAngle = leftWheelJoint->GetAngle(0).Radian();
+#endif
+
 	double dLeftAngle = leftAngle - lastLeftAngle;
 	lastLeftAngle = leftAngle;
 	//std::cout << "LeftAngle: " <<  leftAngle*180/M_PI << std::endl;
@@ -118,7 +130,11 @@ void GazeboRosWheelEncoder::Update()
 	double leftDist = leftPulses * WHEEL_METER_PER_TICK;
 
 	// RIGHT
-	double rightAngle = rightWheelJoint->GetAngle(0).Radian();
+#if GAZEBO_MAJOR_VERSION >= 8
+   double rightAngle = rightWheelJoint->Position ( 0 );
+#else
+   double rightAngle = rightWheelJoint->GetAngle(0).Radian();
+#endif
 	double dRightAngle = rightAngle - lastRightAngle;
 	lastRightAngle = rightAngle;
 	//std::cout << "RightAngle: " <<  rightAngle*180/M_PI << std::endl;

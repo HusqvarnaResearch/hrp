@@ -81,9 +81,13 @@ void GazeboRosWire::Load( physics::ModelPtr _parent, sdf::ElementPtr _sdf )
 		ROS_WARN("WIRE plugin warning: No garden link found...");
 		return;
 	}
-
-	gardenPose = theGardenLink->GetWorldPose();
-	std::cout << "Garden pos: " << gardenPose.pos.x << ", " << gardenPose.pos.y << ", " << gardenPose.pos.z << std::endl;
+#if GAZEBO_MAJOR_VERSION >= 8
+   gardenPose = theGardenLink->WorldPose();
+#else
+   gardenPose = theGardenLink->GetWorldPose().Ign();
+#endif
+	
+	std::cout << "Garden pos: " << gardenPose.Pos().X() << ", " << gardenPose.Pos().Y() << ", " << gardenPose.Pos().Z() << std::endl;
 
 
 	sdf::ElementPtr plugin = _parent->GetSDF()->GetElement("plugin");
@@ -175,7 +179,12 @@ void GazeboRosWire::InitPlugin()
 	//
 	// Get the mower link base...
 	//
-	theMower = theWorld->GetModel("automower");
+#if GAZEBO_MAJOR_VERSION >= 8
+   theMower = theWorld->ModelByName("automower");
+#else
+   theMower = theWorld->GetModel("automower");
+#endif
+	
 	if (!theMower)
 	{
 		//ROS_WARN("WIRE plugin warning: No automower model!\n");
@@ -249,11 +258,11 @@ void GazeboRosWire::InitPlugin()
 }
 
 
-int GazeboRosWire::GetLoopValue(math::Pose pose,const loopData& loop)
+int GazeboRosWire::GetLoopValue(const ignition::math::Pose3d& pose,const loopData& loop)
 {
 	// The "relative pose" of the sensor is...
-	double xpos = pose.pos.x - gardenPose.pos.x;
-	double ypos = pose.pos.y - gardenPose.pos.y;
+	double xpos = pose.Pos().X() - gardenPose.Pos().X();
+	double ypos = pose.Pos().Y() - gardenPose.Pos().Y();
 
 	//std::cout << "AM (relative) pos: " << xpos << ", " << ypos << ", " << zpos << std::endl;
 	//X and y i meter
@@ -288,10 +297,19 @@ void GazeboRosWire::Update()
 	}
 	else
 	{
-		math::Pose frontC = frontCenterLink->GetWorldPose();
-		math::Pose frontR = frontRightLink->GetWorldPose();
-		math::Pose rearR = rearRightLink->GetWorldPose();
-		math::Pose rearL  = rearLeftLink->GetWorldPose();
+#if GAZEBO_MAJOR_VERSION >= 8
+      ignition::math::Pose3d frontC = frontCenterLink->WorldPose();
+		ignition::math::Pose3d frontR = frontRightLink->WorldPose();
+		ignition::math::Pose3d rearR = rearRightLink->WorldPose();
+		ignition::math::Pose3d rearL  = rearLeftLink->WorldPose();
+#else
+      ignition::math::Pose3d frontC = frontCenterLink->GetWorldPose().Ign();
+		ignition::math::Pose3d frontR = frontRightLink->GetWorldPose().Ign();
+		ignition::math::Pose3d rearR = rearRightLink->GetWorldPose().Ign();
+		ignition::math::Pose3d rearL  = rearLeftLink->GetWorldPose().Ign();
+#endif
+
+		
 
 		for(int i=0;i<loopVec.size();i++)
 		{

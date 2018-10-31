@@ -22,12 +22,15 @@
 #include <am_driver/WheelPower.h>
 #include <std_msgs/UInt16.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Joy.h>
 #include <am_driver/WheelEncoder.h>
 #include <am_driver/WheelCurrent.h>
 #include <am_driver_safe/TifCmd.h>
+#include <am_driver_safe/turnOfLoopCmd.h>
 #include <am_driver/MotorFeedback.h>
 #include <am_driver/MotorFeedbackDiffDrive.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <am_driver/CurrentStatus.h>
 
 #include <sys/select.h>
 
@@ -73,7 +76,6 @@ extern "C"
 }
 #endif
 
-
 #define	AM_STATE_UNDEFINED     0x0
 #define	AM_STATE_IDLE          0x1
 #define	AM_STATE_INIT          0x2
@@ -81,7 +83,31 @@ extern "C"
 #define	AM_STATE_RANDOM        0x4
 #define	AM_STATE_PARK          0x5
 
+// Serial port states
+#define AM_SP_STATE_OFFLINE (0)
+#define AM_SP_STATE_ONLINE (1)
+#define AM_SP_STATE_CONNECTED (2)
+#define AM_SP_STATE_INITIALISING (3)
+#define AM_SP_STATE_ERROR (4)
 
+// OPERATIONAL MODES (i.e. published in SensorStatus.operationalMode)
+#define AM_OP_MODE_OFFLINE (0x0000)
+#define AM_OP_MODE_CONNECTED_MANUAL (0x0001)
+#define AM_OP_MODE_CONNECTED_RANDOM (0x0002)
+
+// Sensor states
+#define HVA_SS_HMB_CTRL 0x0001
+#define HVA_SS_OUTSIDE 0x0002
+#define HVA_SS_COLLISION 0x0004
+#define HVA_SS_LIFTED 0x0008
+#define HVA_SS_TOO_STEEP 0x0010
+#define HVA_SS_PARKED 0x0020
+#define HVA_SS_IN_CS 0x0040
+#define HVA_SS_USER_STOP 0x0080
+#define HVA_SS_CFG_NEEDED 0x0100
+#define HVA_SS_DISC_ON 0x0200
+#define HVA_SS_LOOP_ON 0x0400
+#define HVA_SS_CHARGING 0x0800
 
 namespace Husqvarna
 {
@@ -136,7 +162,10 @@ private:
 
 
 
-
+enum DriverTypes {
+    SD_SAFE,
+    SD_STRICT
+};
 
 class AutomowerSafe
 {
@@ -145,7 +174,7 @@ public:
     ~AutomowerSafe();
 
     bool setup();
-    bool update(ros::Duration dt);
+    virtual bool update(ros::Duration dt);
     
     decision_making::RosEventQueue* eventQueue;
 
@@ -163,15 +192,22 @@ public:
 	void loopDetectionHandling();
 	void cuttingHeightHandling();
 	
+    void clearOverRide();
+
+	
     void newControlMainState(int aNewState);
     
     int GetUpdateRate();
 	
 
-private:
+protected:
     void velocityCallback(const geometry_msgs::Twist::ConstPtr& vel);
     void powerCallback(const am_driver::WheelPower::ConstPtr& power);
     void modeCallback(const std_msgs::UInt16::ConstPtr& msg);
+    void joyCallback(const sensor_msgs::Joy::ConstPtr& j);
+
+    void simLoopCallback(const am_driver::Loop& msg);
+    bool firstLoopCallback = true;
     
     std::string resultToString(hcp_tResult result);
     bool initAutomowerBoard();
@@ -187,11 +223,23 @@ private:
     bool getPitchAndRoll();
     bool getGPSData();
     bool getStateData();
+    bool getLoopDetection();
+    bool getStatus();
+    bool getChargingPowerConnected();
+    bool getStatusKeepAlive();
     bool getSensorStatus();
     bool getLoopData();
     bool getBatteryData();
 
+    void setRandomMode();
+    void setManualMode();
+
     bool isTimeOut(ros::Duration elapsedTime, double frequency);
+
+    int sendMessage(unsigned char *msg, int len, unsigned char *ansmsg, int maxAnsLength, bool retry);
+
+    bool turnOffLoop(am_driver_safe::turnOfLoopCmd::Request& req,
+                                      am_driver_safe::turnOfLoopCmd::Response& res);
 
     bool executeTifCommand(am_driver_safe::TifCmd::Request& req,
                                       am_driver_safe::TifCmd::Response& res);
@@ -199,6 +247,10 @@ private:
     double regulatePid(double current_vel, double wanted_vel);
     bool doSerialComTest();
     void handleCollisionInjections(ros::Duration dt);
+    void sendGuideCommand(std::string cmd, double delaySec, ros::Duration dt);
+    
+    void handleFollowGuide(ros::Duration dt);
+
 
     std::string loadJsonModel(std::string fileName);
 
@@ -206,11 +258,14 @@ private:
     ros::NodeHandle nh;
 
     ros::ServiceServer tifCommandService;
+    ros::ServiceServer turnOffLoopService;
     ros::Subscriber velocity_sub;
     ros::Subscriber power_sub;
     ros::Subscriber cmd_sub;
+    ros::Subscriber joy_sub;
     ros::Subscriber imu_sub;
     ros::Subscriber imu_euler_sub;
+    ros::Subscriber sim_loop_sub;
 
     ros::Publisher pose_pub;
     ros::Publisher odom_pub;
@@ -227,6 +282,7 @@ private:
     ros::Publisher motorFeedbackDiffDrive_pub;
 
 	ros::Publisher navSatFix_pub;
+    ros::Publisher currentStatus_pub;
     tf::TransformBroadcaster br;
 
     
@@ -277,10 +333,51 @@ private:
     int leftTicks;
     int rightTicks;
 
+    int followGuideState;
+    ros::Duration guideTimer;
+
+    // Parameters for wire following
+    typedef enum 
+    {
+        wire_A_left = 0,
+        wire_A_right,
+        wire_G1,
+        wire_G2,
+        wire_G3
+    } WireType;
+    WireType wireToFollow;
+
+    typedef enum 
+    {
+        CS_Range_min = 0,
+        CS_Range_med = 350,
+        CS_Range_max = 700,
+    } CSRangeType;
+    CSRangeType csRange;
+    // Follow In
+    int inCorridorMinWidth;
+    int inCorridorMaxWidth;
+    int wireInGuideCorridor;
+    int autoDistanceEnabled;
+    int delayTime;
+    int followWireInEnable;
+
+    //Follow out
+    int startPositionId;
+    int runningDistance;
+    int proportion;
+    int startPositionEnable;
+    int minMaxDistance;
+
     // Parameters
     std::string pSerialPort;
     bool serialComTest;
     bool serialLog;
+
+    // Nano controller
+    bool joyDisabled;
+    bool waitingForRelease;
+
 
     // Mower parameters (treated as const, that is why capital letters...sorry)
     double WHEEL_DIAMETER;
@@ -298,7 +395,7 @@ private:
     am_driver::Loop loop;
     am_driver::SensorStatus sensorStatus;
     unsigned short requestedState;
-    
+    am_driver::CurrentStatus currentStatus;
     
     am_driver::WheelEncoder encoder;
     am_driver::WheelCurrent wheelCurrent;
@@ -323,6 +420,7 @@ private:
     uint8_t actionResponse;
 
 	bool requestedLoopOn;
+	
 
     // For HCP Library
     hcp_tHost hcpHost;
@@ -364,7 +462,18 @@ private:
 
 };
 
+class AutomowerStrict : public AutomowerSafe
+{
+public:
+    AutomowerStrict(const ros::NodeHandle& nodeh, decision_making::RosEventQueue* eq);
+    bool update(ros::Duration dt);
+private:
+    bool getLoopA0Data();
+    int updateCounter;
+};
+
 typedef boost::shared_ptr<AutomowerSafe> AutomowerSafePtr;
+
 }
 
 #endif

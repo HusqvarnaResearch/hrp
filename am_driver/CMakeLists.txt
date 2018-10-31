@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   BatteryStatus.msg
+  CurrentStatus.msg
   CuttingDiscStatus.msg
   Loop.msg
   LoopData.msg

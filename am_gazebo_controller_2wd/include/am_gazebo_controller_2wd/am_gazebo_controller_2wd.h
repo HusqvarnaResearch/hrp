@@ -149,6 +149,7 @@ namespace gazebo {
       
     // Flags
     bool publishWheelTF_;
+    bool publishOdomTF_;
     bool publishWheelJointState_;
 
   };
