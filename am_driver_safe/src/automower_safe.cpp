@@ -289,8 +289,8 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
 
 
     nextAutomowerInitTime = ros::Time::now();
-    startTime = ros::WallTime::now().toSec();
-    lastRateCheckTime = ros::WallTime::now().toSec();
+    startTime = ros::Time::now().toSec();
+    lastRateCheckTime = ros::Time::now().toSec();
 
     userStop = true; // Assume stopped...
 
@@ -1095,7 +1095,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
         serialPortState = AM_SP_STATE_ERROR;
         return false;
     }
-    endSendTime = ros::WallTime::now().toSec()-startTime;
+    endSendTime = ros::Time::now().toSec()-startTime;
 
     numBytes = 0; // to be assigned after read again
     cnt = 0;
@@ -1110,7 +1110,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     // Read one byte
     res = read(serialFd, &buf[0], 1);
 
-    //    double responseTime = ros::WallTime::now().toSec() - startTime - endSendTime;
+    //    double responseTime = ros::Time::now().toSec() - startTime - endSendTime;
     double responseTime = 0;
 
 
@@ -1228,7 +1228,7 @@ bool AutomowerSafe::initAutomowerBoard()
         return false;
     }
 
-    if ((mowerType == 7) || (mowerType == 8) || (mowerType == 16))    // 430x OR 450X OR 550
+    if ((mowerType == 5) || (mowerType == 7) || (mowerType == 8) || (mowerType == 16))    // 420, 430X, 450X OR 550
     {
         // Get some stuff out from the mower...
         AUTMOWER_WHEEL_BASE_WIDTH = 0.464500;

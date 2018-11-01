@@ -622,6 +622,34 @@
         }
       ]
     },
+    
+    {
+      "elementType": "function",
+      "family": "SystemSettings",
+      "command": "SetHeadlightEnabled",
+      "inParams": [
+        {
+          "name": "headlight",
+          "type": "uint8"
+        }
+      ],
+      "outParams": [
+        {
+          "name": "headlight",
+          "type": "uint8"
+        }
+      ],
+      "protocol": [
+        {
+          "key": "msgType",
+          "value": "2"
+        },
+        {
+          "key": "subCmd",
+          "value": "0x94"
+        }
+      ]
+    },
 
     {
       "elementType": "function",
