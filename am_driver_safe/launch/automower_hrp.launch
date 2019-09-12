@@ -1,4 +1,7 @@
 <launch>
+  <!-- Override if you are not using the bottom USB connector but an internal serial port. -->
+  <arg name="serialPort" default="/dev/ttyACM0" doc="Serial port to use for communicating with robot platform." />
+
   <!-- urdf xml robot description loaded on the Parameter Server-->
   <param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
 
@@ -6,7 +9,7 @@
 
   <!-- Start the am_driver -->
   <node name="am_driver_safe" pkg="am_driver_safe" type="am_driver_safe_node" output="screen">
-    <param name="serialPort" value="/dev/ttyACM0" type="str" />
+    <param name="serialPort" value="$(arg serialPort)" type="str" />
     <param name="printCharge" value="false"/>
 
     <param name="updateRate" value="50.0"/>
