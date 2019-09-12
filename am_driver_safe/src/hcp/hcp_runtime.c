@@ -69,9 +69,9 @@
 */
 
 /** Vector with codecs */
-HCP_VECTOR(hcp_tCodec, hcp_tCodecSet, HCP_MAXSIZE_CODECS);
+HCP_VECTOR(hcp_tCodec, hcp_tCodecSet, HCP_MAXSIZE_CODECS)
 /**	Vector with product libraries */
-HCP_VECTOR(hcp_tCodecLibrary, hcp_tLibrarySet, HCP_MAXSIZE_LIBRARIES);
+HCP_VECTOR(hcp_tCodecLibrary, hcp_tLibrarySet, HCP_MAXSIZE_LIBRARIES)
 
 typedef struct {
 	hcp_tVector header;
@@ -224,7 +224,7 @@ void hcp_Memcpy(hcp_tState* pState, void* pDestination, const void* pSource, con
 
 	if (pState == HCP_NULL || pState->host.memcpy_ == HCP_NULL) {
 		unsigned char* dest = (unsigned char*)pDestination;
-		unsigned char* src = (unsigned char*)pSource;
+		const unsigned char* src = (const unsigned char*)pSource;
 		hcp_Size_t length = NumBytes;
 
 		while (length > 0) {
