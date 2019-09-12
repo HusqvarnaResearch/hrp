@@ -15,7 +15,7 @@
 	</include>
 
 	<!-- urdf xml robot description loaded on the Parameter Server-->
-	<param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
+	<param name="robot_description" command="xacro --inorder '$(find am_description)/urdf/automower.urdf.xacro'" />
 	
 	<!-- push robot_description to factory and spawn robot in gazebo -->
 	<node name="automower_spawn" pkg="gazebo_ros" type="spawn_model" output="screen" args="-urdf -param robot_description -model automower -x 10.5 -y 2.6 -z 0.2 -Y -1.5707" />
