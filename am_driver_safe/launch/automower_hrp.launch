@@ -1,14 +1,18 @@
 <launch>
   <!-- Override if you are not using the bottom USB connector but an internal serial port. -->
-  <arg name="serial_port" default="/dev/ttyACM0" doc="Serial port to use for communicating with robot platform." />
+  <arg name="serial_port" default="/dev/ttyACM0"
+       doc="Serial port to use for communicating with robot platform." />
+  <arg name="driver_only" default="false"
+       doc="Set to true to only start driver, if you want to use your own robot description" />
 
   <!-- urdf xml robot description loaded on the Parameter Server-->
-  <param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
-
-  
+  <param name="robot_description" unless="$(arg driver_only)" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
 
   <!-- Start the am_driver -->
-  <node name="am_driver_safe" pkg="am_driver_safe" type="am_driver_safe_node" output="screen">
+  <node name="am_driver_safe"
+        pkg="am_driver_safe"
+        type="am_driver_safe_node"
+        output="screen">
     <param name="serialPort" value="$(arg serial_port)" type="str" />
     <param name="printCharge" value="false"/>
 
@@ -34,13 +38,19 @@
     <param name="jsonFile" value="$(find am_driver_safe)/config/automower_hrp.json" type="string" />
   </node>
 
-
   <!-- source that publishes the joint positions as a sensor_msgs/JointState -->
-  <param name="use_gui" value="false"/>
-  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+  <node name="joint_state_publisher"
+        pkg="joint_state_publisher"
+        type="joint_state_publisher"
+        unless="$(arg driver_only)">
+    <param name="use_gui" value="false"/>
+  </node>
 
   <!-- publish all the frames to TF -->
-  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher">
+  <node name="robot_state_publisher"
+        pkg="robot_state_publisher"
+        type="state_publisher"
+        unless="$(arg driver_only)">
     <param name="publish_frequency" value="20"/> <!-- Hz -->
   </node>
 
