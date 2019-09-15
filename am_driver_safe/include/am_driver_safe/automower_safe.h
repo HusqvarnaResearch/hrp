@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2014 - Husqvarna AB, part of HusqvarnaGroup
  * Author: Stefan Grufman
- *  	   Kent Askenmalm
+ *         Kent Askenmalm
  *
  */
 
@@ -76,12 +76,12 @@ extern "C"
 }
 #endif
 
-#define	AM_STATE_UNDEFINED     0x0
-#define	AM_STATE_IDLE          0x1
-#define	AM_STATE_INIT          0x2
-#define	AM_STATE_MANUAL        0x3
-#define	AM_STATE_RANDOM        0x4
-#define	AM_STATE_PARK          0x5
+#define AM_STATE_UNDEFINED     am_driver::SensorStatus::CONTROL_STATE_UNDEFINED
+#define AM_STATE_IDLE          am_driver::SensorStatus::CONTROL_STATE_IDLE
+#define AM_STATE_INIT          am_driver::SensorStatus::CONTROL_STATE_INIT
+#define AM_STATE_MANUAL        am_driver::SensorStatus::CONTROL_STATE_MANUAL
+#define AM_STATE_RANDOM        am_driver::SensorStatus::CONTROL_STATE_RANDOM
+#define AM_STATE_PARK          am_driver::SensorStatus::CONTROL_STATE_PARK
 
 // Serial port states
 #define AM_SP_STATE_OFFLINE (0)
@@ -91,23 +91,23 @@ extern "C"
 #define AM_SP_STATE_ERROR (4)
 
 // OPERATIONAL MODES (i.e. published in SensorStatus.operationalMode)
-#define AM_OP_MODE_OFFLINE (0x0000)
-#define AM_OP_MODE_CONNECTED_MANUAL (0x0001)
-#define AM_OP_MODE_CONNECTED_RANDOM (0x0002)
+#define AM_OP_MODE_OFFLINE          (am_driver::SensorStatus::OPERATIONAL_MODE_OFFLINE)
+#define AM_OP_MODE_CONNECTED_MANUAL (am_driver::SensorStatus::OPERATIONAL_MODE_MANUAL)
+#define AM_OP_MODE_CONNECTED_RANDOM (am_driver::SensorStatus::OPERATIONAL_MODE_RANDOM)
 
 // Sensor states
-#define HVA_SS_HMB_CTRL 0x0001
-#define HVA_SS_OUTSIDE 0x0002
-#define HVA_SS_COLLISION 0x0004
-#define HVA_SS_LIFTED 0x0008
-#define HVA_SS_TOO_STEEP 0x0010
-#define HVA_SS_PARKED 0x0020
-#define HVA_SS_IN_CS 0x0040
-#define HVA_SS_USER_STOP 0x0080
-#define HVA_SS_CFG_NEEDED 0x0100
-#define HVA_SS_DISC_ON 0x0200
-#define HVA_SS_LOOP_ON 0x0400
-#define HVA_SS_CHARGING 0x0800
+#define HVA_SS_HMB_CTRL     am_driver::SensorStatus::SENSOR_STATUS_HMB_CTRL
+#define HVA_SS_OUTSIDE      am_driver::SensorStatus::SENSOR_STATUS_OUTSIDE
+#define HVA_SS_COLLISION    am_driver::SensorStatus::SENSOR_STATUS_COLLISION
+#define HVA_SS_LIFTED       am_driver::SensorStatus::SENSOR_STATUS_LIFTED
+#define HVA_SS_TOO_STEEP    am_driver::SensorStatus::SENSOR_STATUS_TOO_STEEP
+#define HVA_SS_PARKED       am_driver::SensorStatus::SENSOR_STATUS_PARKED
+#define HVA_SS_IN_CS        am_driver::SensorStatus::SENSOR_STATUS_IN_CS
+#define HVA_SS_USER_STOP    am_driver::SensorStatus::SENSOR_STATUS_USER_STOP
+#define HVA_SS_CFG_NEEDED   am_driver::SensorStatus::SENSOR_STATUS_CFG_NEEDED
+#define HVA_SS_DISC_ON      am_driver::SensorStatus::SENSOR_STATUS_DISC_ON
+#define HVA_SS_LOOP_ON      am_driver::SensorStatus::SENSOR_STATUS_LOOP_ON
+#define HVA_SS_CHARGING     am_driver::SensorStatus::SENSOR_STATUS_CHARGING
 
 namespace Husqvarna
 {
@@ -182,23 +182,23 @@ public:
     
 
 
-	void pauseMower();
-	void startMower();
-	void setParkMode();
-	void setAutoMode();
-	void cutDiscHandling();
-	void cutDiscOff();
+    void pauseMower();
+    void startMower();
+    void setParkMode();
+    void setAutoMode();
+    void cutDiscHandling();
+    void cutDiscOff();
     void stopWheels();
-	void loopDetectionHandling();
-	void cuttingHeightHandling();
-	
+    void loopDetectionHandling();
+    void cuttingHeightHandling();
+    
     void clearOverRide();
 
-	
+    
     void newControlMainState(int aNewState);
     
     int GetUpdateRate();
-	
+    
 
 protected:
     void velocityCallback(const geometry_msgs::Twist::ConstPtr& vel);
@@ -281,7 +281,7 @@ protected:
     ros::Publisher wheelPower_pub;
     ros::Publisher motorFeedbackDiffDrive_pub;
 
-	ros::Publisher navSatFix_pub;
+    ros::Publisher navSatFix_pub;
     ros::Publisher currentStatus_pub;
     tf::TransformBroadcaster br;
 
@@ -419,8 +419,8 @@ protected:
 
     uint8_t actionResponse;
 
-	bool requestedLoopOn;
-	
+    bool requestedLoopOn;
+    
 
     // For HCP Library
     hcp_tHost hcpHost;
@@ -454,9 +454,9 @@ protected:
     
   
     
-	// GPS
-	sensor_msgs::NavSatFix      m_navSatFix_msg;
-	bool						m_publishGPS;
+    // GPS
+    sensor_msgs::NavSatFix      m_navSatFix_msg;
+    bool                        m_publishGPS;
 
     tf::Transform transform;
 
