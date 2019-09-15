@@ -25,7 +25,7 @@ def mowerStateToString(x):
     SensorStatus.MOWER_INTERNAL_STATUS_IN_OPERATION: 'IN_OPERATION',
     SensorStatus.MOWER_INTERNAL_STATUS_RESTRICTED: 'RESTRICTED',
     SensorStatus.MOWER_INTERNAL_STATUS_ERROR: 'ERROR'
-  }.get(x, 'UNKNONW_VALUE')
+  }.get(x, 'UNKNOWN_VALUE')
 
 
 def controlStateToString(x):
@@ -36,7 +36,7 @@ def controlStateToString(x):
     SensorStatus.CONTROL_STATE_MANUAL: 'MANUAL',
     SensorStatus.CONTROL_STATE_RANDOM: 'RANDOM',
     SensorStatus.CONTROL_STATE_PARK: 'PARK',
-  }.get(x, 'UNKNONW_VALUE')
+  }.get(x, 'UNKNOWN_VALUE')
 
 
 
