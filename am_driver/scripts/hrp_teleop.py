@@ -31,11 +31,11 @@ def mowerStateToString(x):
 def controlStateToString(x):
   return {
     SensorStatus.CONTROL_STATE_UNDEFINED: 'UNDEFINED',
-    SensorStatus.CONTROL_STATE_IDLE1: 'IDLE',
-    SensorStatus.CONTROL_STATE_INIT2: 'INIT',
-    SensorStatus.CONTROL_STATE_MANUAL3: 'MANUAL',
-    SensorStatus.CONTROL_STATE_RANDOM4: 'RANDOM',
-    SensorStatus.CONTROL_STATE_PARK5: 'PARK',
+    SensorStatus.CONTROL_STATE_IDLE: 'IDLE',
+    SensorStatus.CONTROL_STATE_INIT: 'INIT',
+    SensorStatus.CONTROL_STATE_MANUAL: 'MANUAL',
+    SensorStatus.CONTROL_STATE_RANDOM: 'RANDOM',
+    SensorStatus.CONTROL_STATE_PARK: 'PARK',
   }.get(x, 'UNKNONW_VALUE')
 
 
