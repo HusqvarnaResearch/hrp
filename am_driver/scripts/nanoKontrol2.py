@@ -118,7 +118,7 @@ class nanoKontrol2:
 			self.light(MI_S_START + i, False)
 			self.light(MI_M_START + i, False)
 			self.light(MI_R_START + i, False)
-        
+
 	# both display all attached midi devices, and look for ones matching nanoKONTROL2
 	def findNanoKontrol(self):
 		print "[nanoKontrol2] ID: Device Info"
@@ -204,7 +204,7 @@ class RosNano2:
 		# init the controller
 		self.midi = nanoKontrol2()
 
-		self.pub = rospy.Publisher('/nano2', Joy)
+		self.pub = rospy.Publisher('nano2', Joy)
 
 		self.update_rate = 10   # Hz
 		
