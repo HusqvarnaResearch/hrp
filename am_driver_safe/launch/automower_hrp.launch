@@ -5,6 +5,17 @@
   <arg name="driver_only" default="false"
        doc="Set to true to only start driver, if you want to use your own robot description" />
 
+  <arg name="GPSCheckFreq" default="1" />
+  <arg name="sensorStatusCheckFreq" default="5" />
+  <arg name="encoderSensorFreq" default="10" />
+  <arg name="batteryCheckFreq" default="1" />
+  <arg name="loopSensorFreq" default="1" />
+  <arg name="wheelSensorFreq" default="50" />
+  <arg name="regulatorFreq" default="50" />
+  <arg name="setPowerFreq" default="0" />
+  <arg name="pitchRollFreq" default="10" />
+  <arg name="stateCheckFreq" default="1" />
+
   <!-- urdf xml robot description loaded on the Parameter Server-->
   <param name="robot_description" unless="$(arg driver_only)" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
 
@@ -14,26 +25,26 @@
         type="am_driver_safe_node"
         output="screen">
     <param name="serialPort" value="$(arg serial_port)" type="str" />
-    <param name="printCharge" value="false"/>
+    <param name="printCharge" value="false" />
 
-    <param name="updateRate" value="50.0"/>
+    <param name="updateRate" value="50.0" />
 
-    <param name="GPSCheckFreq" value="1"/>
-    <param name="sensorStatusCheckFreq" value="5"/>
-    <param name="encoderSensorFreq" value="10"/>
-    <param name="batteryCheckFreq" value="1"/>
-    <param name="loopSensorFreq" value="1"/>
-    <param name="wheelSensorFreq" value="50"/>
-    <param name="regulatorFreq" value="50"/>
-    <param name="setPowerFreq" value="0"/>
-    <param name="pitchRollFreq" value="10"/>
-    <param name="stateCheckFreq" value="1"/>
+    <param name="GPSCheckFreq" value="$(arg GPSCheckFreq)" />
+    <param name="sensorStatusCheckFreq" value="$(arg sensorStatusCheckFreq)" />
+    <param name="encoderSensorFreq" value="$(arg encoderSensorFreq)" />
+    <param name="batteryCheckFreq" value="$(arg batteryCheckFreq)" />
+    <param name="loopSensorFreq" value="$(arg loopSensorFreq)" />
+    <param name="wheelSensorFreq" value="$(arg wheelSensorFreq)" />
+    <param name="regulatorFreq" value="$(arg regulatorFreq)" />
+    <param name="setPowerFreq" value="$(arg setPowerFreq)" />
+    <param name="pitchRollFreq" value="$(arg pitchRollFreq)" />
+    <param name="stateCheckFreq" value="$(arg stateCheckFreq)" />
 
-    <param name="publishTf" value="1"/>
-    <param name="velocityRegulator" value="1"/>
-    <param name="pitchAndRoll" value="true"/>
-    <param name="publishEuler" value="true"/>
-    <param name="startWithoutLoop" value="true"/>
+    <param name="publishTf" value="1" />
+    <param name="velocityRegulator" value="1" />
+    <param name="pitchAndRoll" value="true" />
+    <param name="publishEuler" value="true" />
+    <param name="startWithoutLoop" value="true" />
 
     <param name="jsonFile" value="$(find am_driver_safe)/config/automower_hrp.json" type="string" />
   </node>
@@ -43,7 +54,7 @@
         pkg="joint_state_publisher"
         type="joint_state_publisher"
         unless="$(arg driver_only)">
-    <param name="use_gui" value="false"/>
+    <param name="use_gui" value="false" />
   </node>
 
   <!-- publish all the frames to TF -->
@@ -51,7 +62,7 @@
         pkg="robot_state_publisher"
         type="state_publisher"
         unless="$(arg driver_only)">
-    <param name="publish_frequency" value="20"/> <!-- Hz -->
+    <param name="publish_frequency" value="20" /> <!-- Hz -->
   </node>
 
 </launch>
