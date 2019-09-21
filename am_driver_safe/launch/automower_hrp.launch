@@ -16,6 +16,9 @@
   <arg name="pitchRollFreq" default="10" />
   <arg name="stateCheckFreq" default="1" />
 
+  <arg name="odomFrame" default="odom" />
+  <arg name="baseLinkFrame" default="base_link" />
+
   <!-- urdf xml robot description loaded on the Parameter Server-->
   <param name="robot_description" unless="$(arg driver_only)" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
 
@@ -45,6 +48,9 @@
     <param name="pitchAndRoll" value="true" />
     <param name="publishEuler" value="true" />
     <param name="startWithoutLoop" value="true" />
+
+    <param name="odomFrame" value="$(arg odomFrame)" />
+    <param name="baseLinkFrame" value="$(arg baseLinkFrame)" />
 
     <param name="jsonFile" value="$(find am_driver_safe)/config/automower_hrp.json" type="string" />
   </node>

@@ -438,6 +438,10 @@ protected:
     int lastComtestWheelMotorPower;
     double startTime;
 
+    // Name of ROS TF frames
+    std::string odomFrame;
+    std::string baseLinkFrame;
+
     bool startWithoutLoop;
     bool publishEuler;
 
