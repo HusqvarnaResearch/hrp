@@ -7,7 +7,6 @@ project(hq_decision_making)
 find_package(catkin REQUIRED COMPONENTS
   actionlib
   diagnostic_updater
-  hq_decision_making_parser
   hq_robot_task
   roscpp
   std_msgs
@@ -115,7 +114,6 @@ include_directories(
 #===================== ROS =============================================
 
 add_library(hq_decision_making_ros src/hq_ROSTask.cpp)
-add_dependencies(hq_decision_making_ros hq_robot_task_gencpp)
 target_link_libraries(hq_decision_making_ros ${catkin_LIBRARIES} )
 
 #=======================================================================
@@ -138,12 +136,6 @@ target_link_libraries(hq_decision_making_ros ${catkin_LIBRARIES} )
 
 #add_executable(parse_code src/test_parser.cpp)
 #message("do decision_making_parsing")
-
-
-hq_decision_making_parsing(
-	src/hq_ROSTask.cpp
-)  
-
     
 #=======================================================================
 #############

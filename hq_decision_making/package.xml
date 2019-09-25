@@ -43,7 +43,6 @@
   
   <build_depend>actionlib</build_depend>
   <build_depend>diagnostic_updater</build_depend>
-  <build_depend>hq_decision_making_parser</build_depend>
   <build_depend>hq_robot_task</build_depend>
   <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
