@@ -5,7 +5,7 @@ project(am_driver)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
+  rospy
   std_msgs
   geometry_msgs
   sensor_msgs
@@ -50,18 +50,18 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
-  BatteryStatus.msg
-  CurrentStatus.msg
-  CuttingDiscStatus.msg
-  Loop.msg
-  LoopData.msg
-  MotorFeedback.msg
-  MotorFeedbackDiffDrive.msg
-  SensorStatus.msg
-  WheelCurrent.msg
-  WheelEncoder.msg
-  WheelPower.msg
-  WheelSpeedRequested.msg
+    BatteryStatus.msg
+    CurrentStatus.msg
+    CuttingDiscStatus.msg
+    Loop.msg
+    LoopData.msg
+    MotorFeedback.msg
+    MotorFeedbackDiffDrive.msg
+    SensorStatus.msg
+    WheelCurrent.msg
+    WheelEncoder.msg
+    WheelPower.msg
+    WheelSpeedRequested.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -81,9 +81,8 @@ add_message_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  am_driver
+    std_msgs
+    geometry_msgs
 )
 
 ###################################
@@ -98,7 +97,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES am_driver
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf message_runtime
+  CATKIN_DEPENDS std_msgs geometry_msgs sensor_msgs nav_msgs tf message_runtime
 #  DEPENDS system_lib
 )
 
@@ -109,7 +108,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 # include_directories(include)
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp library
 # add_library(am_driver

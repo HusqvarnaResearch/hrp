@@ -1,9 +1,5 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.5.1)
 project(am_driver_safe)
-
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DHCP_NOEXPORT -DHCP_EXPORT")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHCP_NOEXPORT -DHCP_EXPORT -std=c++11 -DDISABLE_DECISION_MAKING_LOG")
-
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -73,12 +69,7 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-    am_driver_safe
-    geometry_msgs
-    std_msgs
-)
+generate_messages()
 
 ###################################
 ## catkin specific configuration ##
@@ -129,7 +120,7 @@ add_executable(am_driver_safe_node
 
 hq_decision_making_parsing(src/automower_safe_states.cpp)
 
-add_dependencies(am_driver_safe_node am_driver_generate_messages_cpp am_driver_safe_generate_messages_cpp)
+add_dependencies(am_driver_safe_node am_driver_safe_generate_messages_cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -140,6 +131,17 @@ target_link_libraries(am_driver_safe_node
   ${catkin_LIBRARIES}
 )
 
+target_compile_options(am_driver_safe_node
+  PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:-std=c99>
+    $<$<COMPILE_LANGUAGE:CXX>:-std=c++11>
+)
+target_compile_definitions(am_driver_safe_node
+  PRIVATE
+    HCP_NOEXPORT
+    HCP_EXPORT 
+    $<$<COMPILE_LANGUAGE:CXX>:DISABLE_DECISION_MAKING_LOG>
+)
 
 #############
 ## Install ##
@@ -163,11 +165,10 @@ install(TARGETS am_driver_safe_node
 )
 
 ## Mark cpp header files for installation
-# install(DIRECTORY include/${PROJECT_NAME}/
-#   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#   FILES_MATCHING PATTERN "*.h"
-#   PATTERN ".svn" EXCLUDE
-# )
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+  FILES_MATCHING PATTERN "*.h"
+)
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
