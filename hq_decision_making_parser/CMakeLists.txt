@@ -116,10 +116,10 @@ add_executable(hq_decision_making_parser
  
               
 set(SRC_XML_PARSER "${CMAKE_CURRENT_SOURCE_DIR}/src/hq_xml_parser.py")
-message("  -- Source of Xml Parser location is ${SRC_XML_PARSER}")
+message(STATUS "  -- Source of Xml Parser location is ${SRC_XML_PARSER}")
 
 set( XMLPARSER "${CATKIN_DEVEL_PREFIX}/lib/${PROJECT_NAME}/hq_decision_making_xml_parser.py" ) 
-message("  -- Xml Parser location is ${XMLPARSER}")
+message(STATUS "  -- Xml Parser location is ${XMLPARSER}")
   
 FILE(READ "${SRC_XML_PARSER}" SRC_XML_PARSER_TEXT )
 FILE(WRITE "${XMLPARSER}" "${SRC_XML_PARSER_TEXT}" )
