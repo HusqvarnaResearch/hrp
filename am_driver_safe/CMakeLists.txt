@@ -1,24 +1,24 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(am_driver_safe)
 
-set(CMAKE_C_FLAGS "-std=c99 -DHCP_NOEXPORT -DHCP_EXPORT")
-set(CMAKE_CXX_FLAGS "-DHCP_NOEXPORT -DHCP_EXPORT -std=c++11 -DDISABLE_DECISION_MAKING_LOG")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -DHCP_NOEXPORT -DHCP_EXPORT")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHCP_NOEXPORT -DHCP_EXPORT -std=c++11 -DDISABLE_DECISION_MAKING_LOG")
 
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  am_driver
+  geometry_msgs
   hq_decision_making
   hq_decision_making_parser
-  roscpp
-  std_msgs
-  geometry_msgs
-  sensor_msgs
-  nav_msgs
-  tf
-  am_driver
   message_generation
+  nav_msgs
+  roscpp
+  sensor_msgs
+  std_msgs
+  tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -61,8 +61,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 add_service_files(
   FILES
-  TifCmd.srv
-  turnOfLoopCmd.srv
+    TifCmd.srv
+    turnOfLoopCmd.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -73,12 +73,12 @@ add_service_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   std_msgs
-   geometry_msgs
-   am_driver_safe
- )
+generate_messages(
+  DEPENDENCIES
+    am_driver_safe
+    geometry_msgs
+    std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -92,7 +92,7 @@ add_service_files(
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES am_driver
-  CATKIN_DEPENDS roscpp std_msgs geometry_msgs sensor_msgs nav_msgs tf message_runtime am_driver
+  CATKIN_DEPENDS am_driver geometry_msgs message_runtime nav_msgs roscpp sensor_msgs std_msgs tf
 #  DEPENDS system_lib
 )
 
@@ -112,15 +112,19 @@ include_directories(include include/hcp ${catkin_INCLUDE_DIRS})
 
 ## Declare a cpp executable
 add_executable(am_driver_safe_node
-    src/am_driver_safe_node.cpp src/automower_safe.cpp src/automower_safe_states.cpp src/automower_strict.cpp
-    src/amproto.cpp
-    src/hcp/cJSON.c
-    src/hcp/hcp_library.c
-    src/hcp/hcp_runtime.c
-    src/hcp/hcp_string.c
-    src/hcp/hcp_tif.c
-    src/hcp/hcp_vector.c
-    src/hcp/amg3.c)
+  src/am_driver_safe_node.cpp
+  src/amproto.cpp
+  src/automower_safe.cpp
+  src/automower_safe_states.cpp
+  src/automower_strict.cpp
+  src/hcp/amg3.c
+  src/hcp/cJSON.c
+  src/hcp/hcp_library.c
+  src/hcp/hcp_runtime.c
+  src/hcp/hcp_string.c
+  src/hcp/hcp_tif.c
+  src/hcp/hcp_vector.c
+)
 
 
 hq_decision_making_parsing(src/automower_safe_states.cpp)
@@ -167,20 +171,12 @@ install(TARGETS am_driver_safe_node
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(FILES
-  launch/automower.launch
   launch/automower_hrp.launch
-  launch/el_cheapo.launch
-  launch/automower_rab.launch
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+  launch/automower_hrp_stateshow.launch
+  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
 )
 
 install(FILES
-  config/31.7_Main-App-P2_H585920_161123-152100_Debug.json
-  config/31.7_Main-App-P2_master_build-542_Debug.json
-  config/31.7_Main-App-P2_master_build-609_Debug.json
-  config/31.7_Main-App-P2-Debug_release-10.20.json
-  config/31.7_P2_Main_App-Certified_master_build_285-Debug.json
-  config/31.9_Main-App-P0-Debug_h502899_170904-134048.json
   config/automower_hrp.json
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/config
 )

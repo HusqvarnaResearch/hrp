@@ -71,7 +71,7 @@ generate_messages(
 catkin_package(
  INCLUDE_DIRS include
 # LIBRARIES robot_task
- CATKIN_DEPENDS actionlib actionlib_msgs message_generation roscpp rospy std_msgs
+ CATKIN_DEPENDS actionlib actionlib_msgs message_generation roscpp rospy std_msgs message_runtime
 # DEPENDS system_lib
 # CFG_EXTRAS robot_task-extras.cmake
 )

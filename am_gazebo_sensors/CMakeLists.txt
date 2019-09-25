@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(am_gazebo_sensors)
-set(CMAKE_CXX_FLAGS "-std=c++11")
+add_compile_options(-std=c++11)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -81,9 +81,9 @@ find_package(gazebo REQUIRED)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
- INCLUDE_DIRS include
-#  LIBRARIES am_gazebo_wire
- CATKIN_DEPENDS am_driver gazebo_msgs gazebo_ros roscpp
+  INCLUDE_DIRS include
+#  LIBRARIES am_gazebo_sensors
+  CATKIN_DEPENDS am_driver gazebo_msgs gazebo_ros roscpp
 #  DEPENDS system_lib
 )
 
