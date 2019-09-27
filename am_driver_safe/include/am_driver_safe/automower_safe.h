@@ -236,7 +236,7 @@ protected:
 
     bool isTimeOut(ros::Duration elapsedTime, double frequency);
 
-    int sendMessage(unsigned char *msg, int len, unsigned char *ansmsg, int maxAnsLength, bool retry);
+    ssize_t sendMessage(unsigned char *msg, size_t len, unsigned char *ansmsg, size_t maxAnsLength, bool retry);
 
     bool turnOffLoop(am_driver_safe::turnOfLoopCmd::Request& req,
                                       am_driver_safe::turnOfLoopCmd::Response& res);
