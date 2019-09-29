@@ -50,7 +50,7 @@ macro(hq_decision_making_parsing _SRC_FILE_LIST)
 		STRING( FIND ${CATKIN_PACKAGE_BIN_DESTINATION} "/" SPLIT_POSITION )
 		MATH(EXPR SPLIT_POSITION "${SPLIT_POSITION}+1")
 		MESSAGE("Position of character '/' is ${SPLIT_POSITION}" )
-		string(SUBSTRING "${CATKIN_PACKAGE_BIN_DESTINATION}" ${SPLIT_POSITION} 200 PACKAGE_NAME)
+		string(SUBSTRING "${CATKIN_PACKAGE_BIN_DESTINATION}" ${SPLIT_POSITION} -1 PACKAGE_NAME)
 		MESSAGE(" Package name is ${PACKAGE_NAME}" )
 
 		set(FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/hq_decision_making_parsing_${PACKAGE_NAME}.dir/hq_decision_making_parsing.cmake )
