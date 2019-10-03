@@ -170,6 +170,12 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     n_private.param("startWithoutLoop", startWithoutLoop, true);
     ROS_INFO("Param: startWithoutLoop: [%d]", startWithoutLoop);
 
+    n_private.param<std::string>("odomFrame", odomFrame, "odom");
+    ROS_INFO("Param: odomFrame: [%s]", baseLinkFrame.c_str());
+    n_private.param<std::string>("baseLinkFrame", baseLinkFrame, "base_link");
+    ROS_INFO("Param: baseLinkFrame: [%s]", baseLinkFrame.c_str());
+
+
     bool simulateLoop;
     n_private.param("simulateLoop", simulateLoop, false);
     ROS_INFO("Param: simulateLoop: [%d]", simulateLoop);
@@ -250,7 +256,7 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     robot_pose.pose.orientation.z = q.z();
     robot_pose.pose.orientation.w = q.w();
 
-    robot_pose.header.frame_id = "base_link";
+    robot_pose.header.frame_id = baseLinkFrame;
     robot_pose.header.stamp = ros::Time::now();
 
 
@@ -1364,10 +1370,10 @@ bool AutomowerSafe::getWheelData()
     wheelCurrent.right = result.parameters[5].value.i16;
 
     wheelCurrent.header.stamp = current_time;
-    wheelCurrent.header.frame_id = "odom";
+    wheelCurrent.header.frame_id = odomFrame;
 
     wheelPower.header.stamp = current_time;
-    wheelPower.header.frame_id = "odom";
+    wheelPower.header.frame_id = odomFrame;
 
 
     motorFeedbackDiffDrive.left.omega = current_lv / (0.5 * WHEEL_DIAMETER);
@@ -2761,14 +2767,14 @@ bool AutomowerSafe::update(ros::Duration dt)
 			tf::quaternionMsgToTF(robot_pose.pose.orientation, q);
 			transform.setRotation(q);
 
-            br.sendTransform(tf::StampedTransform(transform, current_time, "odom", "base_link"));
+            br.sendTransform(tf::StampedTransform(transform, current_time, odomFrame, baseLinkFrame));
         }
 
         // Odometry message over ROS
         nav_msgs::Odometry odom;
         odom.header.stamp = current_time;
-        odom.header.frame_id = "odom";
-        odom.child_frame_id = "base_link";
+        odom.header.frame_id = odomFrame;
+        odom.child_frame_id = baseLinkFrame;
 
         // Set the position
         odom.pose.pose.position.x = robot_pose.pose.position.x;
@@ -2804,11 +2810,11 @@ bool AutomowerSafe::update(ros::Duration dt)
         }
 
         sensorStatus.header.stamp = current_time;
-        sensorStatus.header.frame_id = "odom";
+        sensorStatus.header.frame_id = odomFrame;
         sensorStatus_pub.publish(sensorStatus);
 
         currentStatus.header.stamp = current_time;
-        currentStatus.header.frame_id = "odom";
+        currentStatus.header.frame_id = odomFrame;
         currentStatus_pub.publish(currentStatus);
     }
 
