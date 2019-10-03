@@ -213,10 +213,6 @@ typedef struct {
 	 */
 	HCP_API hcp_Int HCP_CALL hcp_LoadModel(hcp_tState* pState, hcp_cszStr Model, hcp_Size_t Length, hcp_Int* pId);
 	/**
-	 *	MARKED FOR DELETION
-	 */
-	HCP_API hcp_Int HCP_CALL hcp_GetPrimitiveType(hcp_tState* pState, hcp_Int CommandSetId, const hcp_szStr ComplexType);
-	/**
 	 *	Loads a codec library into a HCP-state, allowing codec instances to be created for encoding and decoding data.
 	 *	@param pState	State where the codec should be made avalible.
 	 *	@param codecName	Output buffer where the name (zero-terminated string) of the codec will be written to.

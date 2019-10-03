@@ -170,6 +170,12 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     n_private.param("startWithoutLoop", startWithoutLoop, true);
     ROS_INFO("Param: startWithoutLoop: [%d]", startWithoutLoop);
 
+    n_private.param<std::string>("odomFrame", odomFrame, "odom");
+    ROS_INFO("Param: odomFrame: [%s]", baseLinkFrame.c_str());
+    n_private.param<std::string>("baseLinkFrame", baseLinkFrame, "base_link");
+    ROS_INFO("Param: baseLinkFrame: [%s]", baseLinkFrame.c_str());
+
+
     bool simulateLoop;
     n_private.param("simulateLoop", simulateLoop, false);
     ROS_INFO("Param: simulateLoop: [%d]", simulateLoop);
@@ -190,7 +196,6 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
 
     // Guide Following
     followGuideState = 0;
-    WireType wireToFollow;
 
     // Follow In - defaults
     inCorridorMinWidth = 0;
@@ -250,7 +255,7 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     robot_pose.pose.orientation.z = q.z();
     robot_pose.pose.orientation.w = q.w();
 
-    robot_pose.header.frame_id = "base_link";
+    robot_pose.header.frame_id = baseLinkFrame;
     robot_pose.header.stamp = ros::Time::now();
 
 
@@ -335,7 +340,7 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
         ROS_ERROR("Could not initialize Load AMG3 codec.");
     }
 
-    error = hcp_LoadModel(hcpState, (hcp_szStr)model.c_str(), sizeof(model.c_str()), &modelId);
+    error = hcp_LoadModel(hcpState, (hcp_cszStr)model.c_str(), sizeof(model.c_str()), &modelId);
     if (error != HCP_NOERROR)
     {
         hcp_CloseState(hcpState);
@@ -373,12 +378,13 @@ AutomowerSafe::~AutomowerSafe()
 }
 
 bool AutomowerSafe::turnOffLoop(am_driver_safe::turnOfLoopCmd::Request& req,
-                                      am_driver_safe::turnOfLoopCmd::Response& res)
+                                am_driver_safe::turnOfLoopCmd::Response& res)
 {
     eventQueue->raiseEvent("/LOOPDETECTION_CHANGED");
+    return true;
 }
 
-int AutomowerSafe::sendMessage(unsigned char *msg, int len, unsigned char *ansmsg, int maxAnsLength, bool retry)
+ssize_t AutomowerSafe::sendMessage(unsigned char *msg, size_t len, unsigned char *ansmsg, size_t maxAnsLength, bool retry)
 {
 	
 /*
@@ -391,7 +397,7 @@ int AutomowerSafe::sendMessage(unsigned char *msg, int len, unsigned char *ansms
 */	
 	
 	// Sending
-	int cnt=0;
+  ssize_t cnt=0;
 	cnt = write(serialFd, msg, len);
 	
 	if(cnt != len)
@@ -401,8 +407,8 @@ int AutomowerSafe::sendMessage(unsigned char *msg, int len, unsigned char *ansms
 	}
 
 	cnt = 0;
-	int res;
-	int payloadLength = 0;
+  ssize_t res;
+  size_t payloadLength = 0;
 	
 	// Clear answer buffer
 	memset(ansmsg, 0, maxAnsLength);
@@ -432,7 +438,7 @@ int AutomowerSafe::sendMessage(unsigned char *msg, int len, unsigned char *ansms
 	unsigned max_retries = 100;
 	while ((readBytes < payloadLength) && (max_retries > 0))
 	{
-		int bytes = read(serialFd, &ansmsg[cnt], payloadLength-readBytes);
+    ssize_t bytes = read(serialFd, &ansmsg[cnt], payloadLength-readBytes);
 		if (bytes > 0)
 		{
 			readBytes += bytes;
@@ -993,12 +999,18 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
     else if (msg->data == 0x1000)
     {
         ROS_WARN("Shutdown...bye bye...");
-        system("sudo shutdown -h now");
+        if (!system("sudo shutdown -h now"))
+        {
+          ROS_ERROR("Failed to shut down");
+        }
     }
     else if (msg->data == 0x1001)
     {
         ROS_WARN("Rebooting...bye bye...");
-        system("sudo reboot");
+        if (!system("sudo reboot"))
+        {
+          ROS_ERROR("Failed to reboot");
+        }
     }
     // Sound commands, 0x400 is a nice little beep and then they get increasingly annoying (full Alarm 10 minutes for example)
     // Use 0x40E to shut the sound off
@@ -1059,7 +1071,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
     hcp_Uint8 buf[255];
     hcp_Int numBytes = 0;
 
-    numBytes = hcp_Encode(hcpState, codecId, (hcp_szStr)msg, buf, 255);
+    numBytes = hcp_Encode(hcpState, codecId, (hcp_cszStr)msg, buf, 255);
 
     if (numBytes <0)
     {
@@ -1086,7 +1098,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
         std::cout << std::dec;
     }
 
-    int cnt = 0;
+    ssize_t cnt = 0;
     cnt = write(serialFd, buf, numBytes);
 
     if (cnt != numBytes)
@@ -1099,8 +1111,7 @@ bool AutomowerSafe::sendMessage(const char* msg, int len, hcp_tResult& result)
 
     numBytes = 0; // to be assigned after read again
     cnt = 0;
-    int res;
-    int payloadLength = 0;
+    ssize_t res;
 
     // Clear answer buffer (only using one byte...but reused from above)
     memset(buf, 0, 255);
@@ -1337,6 +1348,7 @@ bool AutomowerSafe::getEncoderData()
 
     // Set the timestamp of the received data to now
     encoder.header.stamp = current_time;
+    return true;
 }
 
 bool AutomowerSafe::getWheelData()
@@ -1364,10 +1376,10 @@ bool AutomowerSafe::getWheelData()
     wheelCurrent.right = result.parameters[5].value.i16;
 
     wheelCurrent.header.stamp = current_time;
-    wheelCurrent.header.frame_id = "odom";
+    wheelCurrent.header.frame_id = odomFrame;
 
     wheelPower.header.stamp = current_time;
-    wheelPower.header.frame_id = "odom";
+    wheelPower.header.frame_id = odomFrame;
 
 
     motorFeedbackDiffDrive.left.omega = current_lv / (0.5 * WHEEL_DIAMETER);
@@ -1393,7 +1405,7 @@ std::string AutomowerSafe::resultToString(hcp_tResult result)
 
     std::string resultStr = "";
     std::string typeName;
-    double value;
+    double value = 0.0;
     if (result.parameterCount < 0 || result.parameterCount > 100)
     {
         std::cout << "invalid number of parameters: " << result.parameterCount << std::endl;
@@ -1525,7 +1537,9 @@ bool AutomowerSafe::getPitchAndRoll()
 
         //std::cout << " pitchA: " << pitch << "  roll: " << roll << "  yaw: "  << zAcc << "  upside: " << upside << "   temperature: " << temperature << std::endl;
         //std::cout << "m_pitch: " << m_pitch << "  m_roll: " << m_roll << std::endl;
+        return true;
     }
+    return false;
 }
 
 bool AutomowerSafe::getGPSData()
@@ -2212,7 +2226,6 @@ void AutomowerSafe::sendGuideCommand(std::string cmd, double delaySec, ros::Dura
 
 void AutomowerSafe::handleFollowGuide(ros::Duration dt)
 {
-    hcp_tResult result;
     std::stringstream message;
     char buf[200];
     switch (followGuideState)
@@ -2272,6 +2285,7 @@ void AutomowerSafe::handleFollowGuide(ros::Duration dt)
         {
             sprintf(buf,"DrivingSettings.SetCSRange(range:%d)", CS_Range_min);
             sendGuideCommand(std::string(buf), 0.1, dt);
+            break;
         }
         case 9: //Issue the command
         {
@@ -2349,6 +2363,7 @@ void AutomowerSafe::handleFollowGuide(ros::Duration dt)
         {
             sprintf(buf,"DrivingSettings.SetCSRange(range:%d)", CS_Range_max);
             sendGuideCommand(std::string(buf), 0.1, dt);
+            break;
         }
 
         case 263: //Done
@@ -2761,14 +2776,14 @@ bool AutomowerSafe::update(ros::Duration dt)
 			tf::quaternionMsgToTF(robot_pose.pose.orientation, q);
 			transform.setRotation(q);
 
-            br.sendTransform(tf::StampedTransform(transform, current_time, "odom", "base_link"));
+            br.sendTransform(tf::StampedTransform(transform, current_time, odomFrame, baseLinkFrame));
         }
 
         // Odometry message over ROS
         nav_msgs::Odometry odom;
         odom.header.stamp = current_time;
-        odom.header.frame_id = "odom";
-        odom.child_frame_id = "base_link";
+        odom.header.frame_id = odomFrame;
+        odom.child_frame_id = baseLinkFrame;
 
         // Set the position
         odom.pose.pose.position.x = robot_pose.pose.position.x;
@@ -2804,11 +2819,11 @@ bool AutomowerSafe::update(ros::Duration dt)
         }
 
         sensorStatus.header.stamp = current_time;
-        sensorStatus.header.frame_id = "odom";
+        sensorStatus.header.frame_id = odomFrame;
         sensorStatus_pub.publish(sensorStatus);
 
         currentStatus.header.stamp = current_time;
-        currentStatus.header.frame_id = "odom";
+        currentStatus.header.frame_id = odomFrame;
         currentStatus_pub.publish(currentStatus);
     }
 
