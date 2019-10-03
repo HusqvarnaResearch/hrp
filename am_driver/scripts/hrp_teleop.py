@@ -63,7 +63,7 @@ class HRP_Teleop(object):
                   's':np.array([0,0])
                   }
 
-  set_bindings = { 't':np.array([1,1]),
+  set_bindings = {'t':np.array([1,1]),
                   'b':np.array([-1,-1]),
                   'y':np.array([1,0]),
                   'n':np.array([-1,0]),
@@ -83,10 +83,10 @@ class HRP_Teleop(object):
     self.battAVolt = 0.0
     self.battBVolt = 0.0
     # Setup publishers
-    self.pub_twist = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
-    self.pub_mode = rospy.Publisher('/cmd_mode', UInt16, queue_size=1)
-    rospy.Subscriber('/sensor_status', SensorStatus, self.callback_sensor_status)
-    rospy.Subscriber('/battery_status', BatteryStatus, self.callback_battery_status)
+    self.pub_twist = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+    self.pub_mode = rospy.Publisher('cmd_mode', UInt16, queue_size=1)
+    rospy.Subscriber('sensor_status', SensorStatus, self.callback_sensor_status)
+    rospy.Subscriber('battery_status', BatteryStatus, self.callback_battery_status)
 
     self.searching = False
 
