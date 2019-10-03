@@ -44,7 +44,7 @@ static unsigned char MowerCRC[] =
 
 
 Message::Message(unsigned char type, unsigned char len)
-: Length(len), MessageType(type)
+: MessageType(type), Length(len)
 {
 
 }

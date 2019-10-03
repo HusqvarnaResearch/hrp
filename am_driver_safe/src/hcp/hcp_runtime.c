@@ -69,9 +69,9 @@
 */
 
 /** Vector with codecs */
-HCP_VECTOR(hcp_tCodec, hcp_tCodecSet, HCP_MAXSIZE_CODECS);
+HCP_VECTOR(hcp_tCodec, hcp_tCodecSet, HCP_MAXSIZE_CODECS)
 /**	Vector with product libraries */
-HCP_VECTOR(hcp_tCodecLibrary, hcp_tLibrarySet, HCP_MAXSIZE_LIBRARIES);
+HCP_VECTOR(hcp_tCodecLibrary, hcp_tLibrarySet, HCP_MAXSIZE_LIBRARIES)
 
 typedef struct {
 	hcp_tVector header;
@@ -224,7 +224,7 @@ void hcp_Memcpy(hcp_tState* pState, void* pDestination, const void* pSource, con
 
 	if (pState == HCP_NULL || pState->host.memcpy_ == HCP_NULL) {
 		unsigned char* dest = (unsigned char*)pDestination;
-		unsigned char* src = (unsigned char*)pSource;
+		const unsigned char* src = (const unsigned char*)pSource;
 		hcp_Size_t length = NumBytes;
 
 		while (length > 0) {
@@ -595,25 +595,6 @@ void hcp_GetMessage(const hcp_Int ErrorCode, hcp_szStr pOutput, const hcp_Size_t
 	if (len < MaxLength) {
 		pOutput[len] = 0;
 	}
-}
-
-hcp_Int hcp_GetPrimitiveType(hcp_tState* pState, const hcp_Int CommandSetId, const hcp_szStr ComplexType) {
-	hcp_Int error = HCP_NOERROR;
-
-	{
-		hcp_Boolean found = HCP_FALSE;
-
-		hcp_Size_t index = hcp_FindFirst(&pState->templates.header, 0, (void*)(HCP_SIZEMASK & CommandSetId), &found);
-
-		if (found == HCP_TRUE) {
-			hcp_tModel* t = (hcp_tModel*)hcp_ValueAt(&pState->templates.header, index);
-		}
-		else {
-			error = HCP_INVALIDTEMPLATEID;
-		}
-	}
-
-	return error;
 }
 
 hcp_Int hcp_LoadModel(hcp_tState* pState, hcp_cszStr Model, const hcp_Size_t Length, hcp_Int* pId) {

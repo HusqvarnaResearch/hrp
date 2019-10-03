@@ -108,7 +108,7 @@ static hcp_Int amg3_AppendFooter(hcp_tRuntime* R, hcp_tBlob* pDestination, const
 static hcp_Uint8 amg3_CalculateCrc8(const hcp_tBlob* pSource, const hcp_Size_t Start, const hcp_Size_t End);
 static hcp_Uint8 amg3_GetHeaderSize(const hcp_Uint8 MessageType);
 static hcp_Int amg3_InterpretHeader(hcp_tRuntime* R, amg3_tSession* pSession, const hcp_Size_t Position, hcp_Boolean* pCompleteHeader);
-static hcp_Int amg3_GetDeviceError(hcp_tBuffer* pContext, hcp_szStr* pMessage);
+static hcp_Int amg3_GetDeviceError(hcp_tBuffer* pContext, hcp_cszStr* pMessage);
 static hcp_Int amg3_InterpretByte(hcp_tRuntime* R, const hcp_Uint8 Byte, amg3_tSession* pSession, hcp_Boolean* pCompleteMessage);
 
 /*
@@ -151,13 +151,13 @@ hcp_tCodecLibrary* hcp_GetLibrary(void) {
 *==============================================================================
 */
 
-hcp_Int amg3_GetDeviceError(hcp_tBuffer* pContext , hcp_szStr* pMessage) {
+hcp_Int amg3_GetDeviceError(hcp_tBuffer* pContext , hcp_cszStr *pMessage) {
 	amg3_tSession* session = (amg3_tSession*)pContext->value;
 	*pMessage = HCP_NULL;
 	const hcp_Int result = session->cmdResult;
 
 	if (pMessage != HCP_NOERROR) {
-		hcp_tErrorMessage* messages = (hcp_tErrorMessage*)amg3_Errors;
+		const hcp_tErrorMessage* messages = (const hcp_tErrorMessage*)amg3_Errors;
 
 		while (messages != HCP_NULL && messages->message != HCP_NULL) {
 			if (result == (messages->code - (AMG3_CMDRESOFFSET))){

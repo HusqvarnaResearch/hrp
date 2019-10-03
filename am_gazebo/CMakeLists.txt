@@ -88,6 +88,15 @@ catkin_package(
 #  DEPENDS system_lib
 )
 
+##################################
+## Update the GAZEBO_MODEL_PATH ##
+##################################
+
+if(CMAKE_HOST_UNIX)
+  catkin_add_env_hooks(90.am_gazebo SHELLS sh DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/env-hooks)
+endif()
+
+
 ###########
 ## Build ##
 ###########
