@@ -9,21 +9,21 @@
 
   <!-- PROPERTY LIST -->
   <!--All units in m-kg-s-radians unit system -->
-  <property name="M_PI" value="3.1415926535897931" />
+  <xacro:property name="M_PI" value="3.1415926535897931" />
 
   <!-- Main Body-base -->
-  <property name="base_x_size" value="0.72" />
-  <property name="base_y_size" value="0.55" />
-  <property name="base_z_size" value="0.23" />
-  <property name="base_mass" value="15" /> <!-- in kg-->
-  <property name="base_z_origin_to_wheel_origin" value="-0.07" />
+  <xacro:property name="base_x_size" value="0.72" />
+  <xacro:property name="base_y_size" value="0.55" />
+  <xacro:property name="base_z_size" value="0.23" />
+  <xacro:property name="base_mass" value="15" /> <!-- in kg-->
+  <xacro:property name="base_z_origin_to_wheel_origin" value="-0.07" />
 
   <!--Inertial macros for the box and cylinder. Units are kg*m^2-->
-  <macro name="box_inertia" params="m x y z">
-    <inertia  ixx="${m*(y*y+z*z)/12}" ixy = "0" ixz = "0"
-              iyy="${m*(x*x+z*z)/12}" iyz = "0"
-              izz="${m*(x*x+z*z)/12}" />
-  </macro>
+  <xacro:macro name="box_inertia" params="m x y z">
+    <inertia ixx="${m*(y*y+z*z)/12}" ixy="0" ixz="0"
+             iyy="${m*(x*x+z*z)/12}" iyz="0"
+             izz="${m*(x*x+z*z)/12}" />
+  </xacro:macro>
   <!-- BASE-LINK -->
   <!--Actual body/chassis of the robot-->
   <link name="base_link">
@@ -32,20 +32,20 @@
       <origin xyz="0.165 0 -0.10" />
       <!--The 3x3 rotational inertia matrix. -->
       <!--<box_inertia  m="${base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>-->
-      <box_inertia  m="${5*base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}"/>
+      <box_inertia m="${5*base_mass}" x="${base_x_size}" y="${base_y_size}" z="${base_z_size}" />
     </inertial>
     <visual>
       <origin xyz="0 0 0" rpy="0 0 ${M_PI/2}" />
       <geometry>
-        <mesh filename="package://am_description/urdf/am_chassis.stl" scale="0.001 0.001 0.001"/>
-        <box size="${base_x_size} ${base_y_size} ${base_z_size}"/>
+        <mesh filename="package://am_description/urdf/am_chassis.stl" scale="0.001 0.001 0.001" />
+        <box size="${base_x_size} ${base_y_size} ${base_z_size}" />
       </geometry>
       <material name="DarkGreen" />
     </visual>
     <collision>
       <origin xyz="0.17 0 0.08" rpy="0 0 0 " />
       <geometry>
-        <box size="0.65 0.50 0.20"/>
+        <box size="0.65 0.50 0.20" />
       </geometry>
     </collision>
   </link>
@@ -55,38 +55,44 @@
   </gazebo>
 
   <!-- WHEELs -->
-  <wheel fb="back" lr="right" parent="base_link" translateY="-0.24" translateX="0.0" translateZ="0.0" wheel_radius="0.1225" wheel_height="0.032" flip="1"/>
-  <wheel fb="back" lr="left" parent="base_link" translateY="0.24" translateX="0.0" translateZ="0.0" wheel_radius="0.1225" wheel_height="0.032" flip="1"/>
+  <wheel fb="back" lr="right" parent="base_link" translateY="-0.24" translateX="0.0" translateZ="0.0"
+         wheel_radius="0.1225" wheel_height="0.032" flip="1" />
+  <wheel fb="back" lr="left" parent="base_link" translateY="0.24" translateX="0.0" translateZ="0.0"
+         wheel_radius="0.1225" wheel_height="0.032" flip="1" />
 
 <!--
-  <wheel fb="front" lr="right" parent="base_link" translateY="-0.15" translateX="0.35" translateZ="-0.065" wheel_radius="0.06" wheel_height="0.05" flip="1"/>
-  <wheel fb="front" lr="left" parent="base_link" translateY="0.15" translateX="0.35" translateZ="-0.065" wheel_radius="0.06" wheel_height="0.05" flip="1"/>
+  <wheel fb="front" lr="right" parent="base_link" translateY="-0.15" translateX="0.35" translateZ="-0.065"
+         wheel_radius="0.06" wheel_height="0.05" flip="1"/>
+  <wheel fb="front" lr="left" parent="base_link" translateY="0.15" translateX="0.35" translateZ="-0.065"
+         wheel_radius="0.06" wheel_height="0.05" flip="1"/>
 -->
-  <swivel_wheel fb="front" lr="right" parent="base_link" translateY="-0.16" translateX="0.355" translateZ="0.03" wheel_radius="0.05" wheel_height="0.05" flip="0"/>
-  <swivel_wheel fb="front" lr="left" parent="base_link" translateY="0.16" translateX="0.355" translateZ="0.03" wheel_radius="0.05" wheel_height="0.05" flip="0"/>
+  <swivel_wheel fb="front" lr="right" parent="base_link" translateY="-0.16" translateX="0.355" translateZ="0.03"
+                wheel_radius="0.05" wheel_height="0.05" flip="0" />
+  <swivel_wheel fb="front" lr="left" parent="base_link" translateY="0.16" translateX="0.355" translateZ="0.03"
+                wheel_radius="0.05" wheel_height="0.05" flip="0" />
 
 
   <!-- LOOP SENSORs -->
-  <sensorpos name="loop_front_center" parent="base_link" translateX="0.38" translateY="0.0" translateZ="-0.04"/>
-  <sensorpos name="loop_front_right" parent="base_link" translateX="0.38" translateY="-0.07" translateZ="-0.04"/>
-  <sensorpos name="loop_rear_left" parent="base_link" translateX="-0.07" translateY="0.14" translateZ="-0.04"/>
-  <sensorpos name="loop_rear_right" parent="base_link" translateX="-0.07" translateY="-0.14" translateZ="-0.04"/>
+  <sensorpos name="loop_front_center" parent="base_link" translateX="0.38" translateY="0.0" translateZ="-0.04" />
+  <sensorpos name="loop_front_right" parent="base_link" translateX="0.38" translateY="-0.07" translateZ="-0.04" />
+  <sensorpos name="loop_rear_left" parent="base_link" translateX="-0.07" translateY="0.14" translateZ="-0.04" />
+  <sensorpos name="loop_rear_right" parent="base_link" translateX="-0.07" translateY="-0.14" translateZ="-0.04" />
 
   <!-- CONFINEMENT SENSORs -->
-  <sensorpos name="col_front_chassis" parent="base_link" translateX="0.55" translateY="0.0" translateZ="0.00"/>
-  <sensorpos name="col_front_left" parent="base_link" translateX="0.43" translateY="0.24" translateZ="0.00"/>
-  <sensorpos name="col_front_right" parent="base_link" translateX="0.43" translateY="-0.24" translateZ="0.00"/>
-  <sensorpos name="col_rear_left" parent="base_link" translateX="-0.10" translateY="0.24" translateZ="0.0"/>
-  <sensorpos name="col_rear_right" parent="base_link" translateX="-0.10" translateY="-0.24" translateZ="0.0"/>
+  <sensorpos name="col_front_chassis" parent="base_link" translateX="0.55" translateY="0.0" translateZ="0.00" />
+  <sensorpos name="col_front_left" parent="base_link" translateX="0.43" translateY="0.24" translateZ="0.00" />
+  <sensorpos name="col_front_right" parent="base_link" translateX="0.43" translateY="-0.24" translateZ="0.00" />
+  <sensorpos name="col_rear_left" parent="base_link" translateX="-0.10" translateY="0.24" translateZ="0.0" />
+  <sensorpos name="col_rear_right" parent="base_link" translateX="-0.10" translateY="-0.24" translateZ="0.0" />
 
   <!-- CUTTING DISC -->
   <link name="cutting_disc_center">
     <visual>
-        <origin xyz="0 0 0" rpy="0 0 0" />
-        <geometry>
-            <cylinder length="0.01" radius="0.11" />
-        </geometry>
-        <material name="Purple" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder length="0.01" radius="0.11" />
+      </geometry>
+      <material name="Purple" />
     </visual>
   </link>
 
@@ -95,20 +101,20 @@
   </gazebo>
 
   <joint name="cutting_disc_center_joint" type="fixed">
-    <parent link="base_link"/>
+    <parent link="base_link" />
     <child link="cutting_disc_center" />
-	<origin xyz="0.25 0.0 -0.07" rpy="0 0 0" />
+    <origin xyz="0.25 0.0 -0.07" rpy="0 0 0" />
   </joint>
 
 
   <!-- Antenna -->
   <link name="antenna_center">
     <visual>
-        <origin xyz="0 0 0" rpy="0 0 0" />
-        <geometry>
-            <cylinder length="0.01" radius="0.05" />
-        </geometry>
-        <material name="Purple" />
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <cylinder length="0.01" radius="0.05" />
+      </geometry>
+      <material name="Purple" />
     </visual>
   </link>
 
@@ -117,13 +123,13 @@
   </gazebo>
 
   <joint name="antenna_center_joint" type="fixed">
-    <parent link="base_link"/>
+    <parent link="base_link" />
     <child link="antenna_center" />
-	<origin xyz="0.27 0.0 0.0" rpy="0 0 0" />
+    <origin xyz="0.27 0.0 0.0" rpy="0 0 0" />
   </joint>
 
 
- 
+
   <!-- GAZEBO STUFF -->
   <gazebo>
     <plugin name="automower_gazebo_controller" filename="libam_gazebo_controller_2wd.so">
@@ -145,63 +151,63 @@
     <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so" />
 
     <plugin name="imu_plugin" filename="libhector_gazebo_ros_imu.so">
-    <alwaysOn>true</alwaysOn>
-    <bodyName>base_link</bodyName>
-    <topicName>imu</topicName>
-    <serviceName>imu_service</serviceName>
-    <updateRate>100.0</updateRate>
-    <rpyOffsets>0 0 0</rpyOffsets> <!-- deprecated -->
+      <alwaysOn>true</alwaysOn>
+      <bodyName>base_link</bodyName>
+      <topicName>imu</topicName>
+      <serviceName>imu_service</serviceName>
+      <updateRate>100.0</updateRate>
+      <rpyOffsets>0 0 0</rpyOffsets> <!-- deprecated -->
 <!--
-	    <gaussianNoise>0.0</gaussianNoise>
-	    <accelDrift>0.5 0.5 0.5</accelDrift>
-	    <accelGaussianNoise>0.35 0.35 0.3</accelGaussianNoise>
-	    <rateDrift>0.1 0.1 0.1</rateDrift>
-	    <rateGaussianNoise>0.05 0.05 0.015</rateGaussianNoise>
-	    <headingDrift>0.1</headingDrift>
-	    <headingGaussianNoise>1.00</headingGaussianNoise>
+      <gaussianNoise>0.0</gaussianNoise>
+      <accelDrift>0.5 0.5 0.5</accelDrift>
+      <accelGaussianNoise>0.35 0.35 0.3</accelGaussianNoise>
+      <rateDrift>0.1 0.1 0.1</rateDrift>
+      <rateGaussianNoise>0.05 0.05 0.015</rateGaussianNoise>
+      <headingDrift>0.1</headingDrift>
+      <headingGaussianNoise>1.00</headingGaussianNoise>
 -->
 
-		<gaussianNoise>0.0</gaussianNoise>  <!-- deprecated -->
-	    <accelDrift>0.0 0.0 0.0</accelDrift>
-	    <accelGaussianNoise>0.0 0.0 0.0</accelGaussianNoise>
-	    <rateDrift>0.0 0.0 0.0</rateDrift>
-	    <rateGaussianNoise>0.0 0.0 0.0</rateGaussianNoise>
-	    <headingDrift>0.0</headingDrift>
-	    <headingGaussianNoise>0.00</headingGaussianNoise>
+      <gaussianNoise>0.0</gaussianNoise>  <!-- deprecated -->
+      <accelDrift>0.0 0.0 0.0</accelDrift>
+      <accelGaussianNoise>0.0 0.0 0.0</accelGaussianNoise>
+      <rateDrift>0.0 0.0 0.0</rateDrift>
+      <rateGaussianNoise>0.0 0.0 0.0</rateGaussianNoise>
+      <headingDrift>0.0</headingDrift>
+      <headingGaussianNoise>0.00</headingGaussianNoise>
     </plugin>
 
     <plugin name="am_gazebo_wheelencoder" filename="libam_gazebo_wheelencoder.so">
-	</plugin>
+    </plugin>
 
     <plugin name="automower_gps_sim" filename="libhector_gazebo_ros_gps.so">
-	  <alwaysOn>true</alwaysOn>
-	  <updateRate>4.0</updateRate>
-	  <bodyName>base_link</bodyName>
-	  <topicName>fix</topicName>
-	  <velocityTopicName>fix_vel</velocityTopicName>
-	  <drift>5.0 5.0 5.0</drift>
-	  <gaussianNoise>0.1 0.1 0.1</gaussianNoise>
-	  <velocityDrift>0 0 0</velocityDrift>
-	  <velocityGaussianNoise>0.1 0.1 0.1</velocityGaussianNoise>
+      <alwaysOn>true</alwaysOn>
+      <updateRate>4.0</updateRate>
+      <bodyName>base_link</bodyName>
+      <topicName>fix</topicName>
+      <velocityTopicName>fix_vel</velocityTopicName>
+      <drift>5.0 5.0 5.0</drift>
+      <gaussianNoise>0.1 0.1 0.1</gaussianNoise>
+      <velocityDrift>0 0 0</velocityDrift>
+      <velocityGaussianNoise>0.1 0.1 0.1</velocityGaussianNoise>
     </plugin>
   </gazebo>
 
   <gazebo reference="base_link">
-	<sensor name="automower_sensor" type="contact">
-		<always_on>true</always_on>
-		<update_rate>50</update_rate>
-		<contact>
-			<collision>base_link_collision</collision>
-		</contact>
-		<plugin name="automower_sensors_plugin" filename="libam_gazebo_sensors.so">
-			<always_on>true</always_on>
-			<update_rate>20</update_rate>
-			<bumperTopicName>sensor_status</bumperTopicName>
-			<loopTopicName>loop</loopTopicName>
-			<!-- 0x01 = FC, 0x02 = FR, 0x04 = RL, 0x08 = RR -->
-			<loopOutsideSensors>15</loopOutsideSensors>
-		</plugin>
-	</sensor>
+    <sensor name="automower_sensor" type="contact">
+      <always_on>true</always_on>
+      <update_rate>50</update_rate>
+      <contact>
+        <collision>base_link_collision</collision>
+      </contact>
+      <plugin name="automower_sensors_plugin" filename="libam_gazebo_sensors.so">
+        <always_on>true</always_on>
+        <update_rate>20</update_rate>
+        <bumperTopicName>sensor_status</bumperTopicName>
+        <loopTopicName>loop</loopTopicName>
+        <!-- 0x01 = FC, 0x02 = FR, 0x04 = RL, 0x08 = RR -->
+        <loopOutsideSensors>15</loopOutsideSensors>
+      </plugin>
+    </sensor>
   </gazebo>
 
 </robot>

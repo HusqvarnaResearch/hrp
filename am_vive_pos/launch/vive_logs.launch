@@ -1,6 +1,6 @@
 <launch>
     <!-- urdf xml robot description loaded on the Parameter Server-->
-    <param name="robot_description" command="$(find xacro)/xacro.py '$(find am_description)/urdf/automower.urdf.xacro'" />
+    <param name="robot_description" command="xacro --inorder '$(find am_description)/urdf/automower.urdf.xacro'" />
 
     <node name="am_vive_pos" pkg="am_vive_pos" type="am_vive_pos" output="screen">
       <param name="serialUsbPort" value="/dev/pts/22" type="str" />
