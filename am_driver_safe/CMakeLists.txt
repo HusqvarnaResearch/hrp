@@ -120,7 +120,7 @@ add_executable(am_driver_safe_node
 
 hq_decision_making_parsing(src/automower_safe_states.cpp)
 
-add_dependencies(am_driver_safe_node am_driver_safe_generate_messages_cpp)
+add_dependencies(am_driver_safe_node am_driver_generate_messages_cpp am_driver_safe_generate_messages_cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes

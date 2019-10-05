@@ -114,6 +114,7 @@ include_directories(
 #===================== ROS =============================================
 
 add_library(hq_decision_making_ros src/hq_ROSTask.cpp)
+add_dependencies(hq_decision_making_ros hq_robot_task_generate_messages_cpp)
 target_link_libraries(hq_decision_making_ros ${catkin_LIBRARIES} )
 
 #=======================================================================
