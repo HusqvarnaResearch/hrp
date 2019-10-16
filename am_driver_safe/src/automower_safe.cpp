@@ -220,7 +220,7 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     loop_pub = nh.advertise<am_driver::Loop>("loop", 5);
     sensorStatus_pub = nh.advertise<am_driver::SensorStatus>("sensor_status", 5);
      
-    batStatus_pub  = nh.advertise<am_driver::BatteryStatus>("battery_status", 5);
+    batStatus_pub  = nh.advertise<am_driver::BatteryStatus>("battery_status", 5, true);
     
     navSatFix_pub = nh.advertise<sensor_msgs::NavSatFix>("GPSfix", 5);
 
