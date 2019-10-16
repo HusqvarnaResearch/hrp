@@ -7,6 +7,7 @@
 
 #include "am_driver_safe/automower_safe.h"
 #include "am_driver_safe/amproto.h"
+#include "am_driver/Mode.h"
 #include <tf/transform_datatypes.h>
 
 #include <math.h>
@@ -921,82 +922,83 @@ void AutomowerSafe::setRandomMode()
 
 void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
 {
-    if (msg->data < 0x90)
+    using am_driver::Mode;
+    if (msg->data < Mode::MODE_MANUAL)
     {
         // Not for us...
         return;
     }
 
-    if (msg->data == 0x90)
+    if (msg->data == Mode::MODE_MANUAL)
     {
         setManualMode();
     }
-    else if (msg->data == 0x91)
+    else if (msg->data == Mode::MODE_RANDOM)
     {
         setRandomMode();
     }
-    else if (msg->data == 0x92)
+    else if (msg->data == Mode::MODE_CUTTING_DISC_OFF)
     {
         cuttingDiscOn = false;
         eventQueue->raiseEvent("/CUTDISC_CHANGED");
         ROS_INFO("AutoMowerSafe: Cutting Disc OFF");
     }
-    else if (msg->data == 0x93)
+    else if (msg->data == Mode::MODE_CUTTING_DISC_ON)
     {
         cuttingDiscOn = true;
         eventQueue->raiseEvent("/CUTDISC_CHANGED");
         ROS_INFO("AutoMowerSafe: Cutting Disc ON");
     }
-    else if (msg->data == 0x94)
+    else if (msg->data == Mode::MODE_CUTTING_HEIGHT_60)
     {
         cuttingHeight = 60;
         eventQueue->raiseEvent("/CUTTINGHEIGHT_CHANGED");
         ROS_INFO("AutoMowerSafe: Cutting Height = 60mm");
 
     }
-    else if (msg->data == 0x95)
+    else if (msg->data == Mode::MODE_CUTTING_HEIGHT_40)
     {
         cuttingHeight = 40;
         eventQueue->raiseEvent("/CUTTINGHEIGHT_CHANGED");
         ROS_INFO("AutoMowerSafe: Cutting Height = 40mm");
 
     }
-    else if (msg->data == 0x100)
+    else if (msg->data == Mode::MODE_PARK)
     {
         requestedState = AM_STATE_PARK;
         DEBUG_LOG(" raiseEvent PARKING");
         eventQueue->raiseEvent("/PARKING");
         ROS_INFO("AutoMowerSafe: Parking requested");
     }
-    else if (msg->data == 0x110)
+    else if (msg->data == Mode::MODE_LOOP_ON)
     {
         requestedLoopOn = true;
         eventQueue->raiseEvent("/LOOPDETECTION_CHANGED");
         ROS_INFO("AutoMowerSafe: Loop detection on");
     }
-    else if (msg->data == 0x111)
+    else if (msg->data == Mode::MODE_LOOP_OFF)
     {
         requestedLoopOn = false;
         eventQueue->raiseEvent("/LOOPDETECTION_CHANGED");
         ROS_INFO("AutoMowerSafe: Loop detection off");
     }
-    else if (msg->data == 0x112)
+    else if (msg->data == Mode::MODE_COLLISION_INJECT)
     {
         ROS_INFO("AutoMowerSafe: Collision injected!");
         collisionState = 1;
     }
-    else if (msg->data == 0x113)
+    else if (msg->data == Mode::MODE_COLLISIONS_DISABLED)
     {
         ROS_INFO("AutoMowerSafe: Collisions Disabled!");
         collisionState = 5;
     }
-    else if (msg->data == 0x114)
+    else if (msg->data == Mode::MODE_COLLISIONS_ENABLED)
     {
         ROS_INFO("AutoMowerSafe: Collisions Enabled!");
         collisionState = 7;
     }
 
-    else if (msg->data == 0x1000)
+    else if (msg->data == Mode::MODE_SHUTDOWN)
     {
         ROS_WARN("Shutdown...bye bye...");
         if (!system("sudo shutdown -h now"))
@@ -1004,7 +1006,7 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
           ROS_ERROR("Failed to shut down");
         }
     }
-    else if (msg->data == 0x1001)
+    else if (msg->data == Mode::MODE_REBOOT)
     {
         ROS_WARN("Rebooting...bye bye...");
         if (!system("sudo reboot"))
@@ -1014,32 +1016,32 @@ void AutomowerSafe::modeCallback(const std_msgs::UInt16::ConstPtr& msg)
     }
     // Sound commands, 0x400 is a nice little beep and then they get increasingly annoying (full Alarm 10 minutes for example)
     // Use 0x40E to shut the sound off
-    else if (msg->data >= 0x400 && msg->data <= 0x40E )
+    else if (msg->data >= Mode::MODE_SOUND_KEY_CLICK && msg->data <= Mode::MODE_SOUND_OFF )
     {
         newSound = true;
-        int soundType = msg->data - 0x400;
+        int soundType = msg->data - Mode::MODE_SOUND_KEY_CLICK;
 
         snprintf(soundCmd, sizeof(soundCmd), "Sound.SetSoundType(soundType:%d) ",soundType);
     }
     // 0x410: Stop folloing guides and enter MANUAL mode (need to actively switch to RANDOM if desired)
-    else if (msg->data == 0x410)
+    else if (msg->data == Mode::MODE_FOLLOW_MANUAL)
     {
         followGuideState = 255;
     }
     //0x411: Follow G1, this may be laid out as an Island if an infinite follow loop sequence is desired
-    else if (msg->data == 0x411)
+    else if (msg->data == Mode::MODE_FOLLOW_G1)
     {
         followGuideState = 1;
         wireToFollow = wire_G1;
     }
     //0x412: Follow G2, this can be used to actually get home after following the infinite loop G1, if laid out properly.
-    else if (msg->data == 0x412)
+    else if (msg->data == Mode::MODE_FOLLOW_G2)
     {
         followGuideState = 1;
         wireToFollow = wire_G2;
     }
     //0x413: Follow G3, may be used on 450x (where there actually is a third guide, not on 430X)
-    else if (msg->data == 0x413)
+    else if (msg->data == Mode::MODE_FOLLOW_G3)
     {
         followGuideState = 1;
         wireToFollow = wire_G3;
