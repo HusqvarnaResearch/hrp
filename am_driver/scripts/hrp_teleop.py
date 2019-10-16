@@ -8,8 +8,7 @@ import tty
 
 import numpy as np
 import rospy
-from am_driver.msg import BatteryStatus
-from am_driver.msg import SensorStatus
+from am_driver.msg import BatteryStatus, Mode, SensorStatus
 from geometry_msgs.msg import Twist
 from std_msgs.msg import UInt16
 
@@ -293,39 +292,39 @@ class HRP_Teleop(object):
     elif ch == '1':
       # Manual mode
       mode = UInt16()
-      mode.data = 0x90
+      mode.data = Mode.MODE_MANUAL
       self.pub_mode.publish(mode)
       self.command = np.array([0, 0])
     elif ch == '2':
       # Random mode
       mode = UInt16()
-      mode.data = 0x91
+      mode.data = Mode.MODE_RANDOM
       self.pub_mode.publish(mode)
       self.command = np.array([0, 0])
     elif ch == 'j':
       # Cutting disc ON
       mode = UInt16()
-      mode.data = 0x93
+      mode.data = Mode.MODE_CUTTING_DISC_ON
       self.pub_mode.publish(mode)
     elif ch == 'k':
       # Cutting disc OFF
       mode = UInt16()
-      mode.data = 0x92
+      mode.data = Mode.MODE_CUTTING_DISC_OFF
       self.pub_mode.publish(mode)
     elif ch == 'i':
       # Cutting height HIGH
       mode = UInt16()
-      mode.data = 0x95
+      mode.data = Mode.MODE_CUTTING_HEIGHT_60
       self.pub_mode.publish(mode)
     elif ch == 'o':
       # Cutting height LOW
       mode = UInt16()
-      mode.data = 0x94
+      mode.data = Mode.MODE_CUTTING_HEIGHT_40
       self.pub_mode.publish(mode)
     elif ch == 'p':
       # Request SEARCHING (charge)
       mode = UInt16()
-      mode.data = 0x100
+      mode.data = Mode.MODE_PARK
         #  self.searching = True
       #else:
        #   mode.data = 0x101
@@ -333,24 +332,24 @@ class HRP_Teleop(object):
       self.pub_mode.publish(mode)
 
     elif ch == '8':
-      # Disable Loop
-      mode = UInt16()
-      mode.data = 0x110
-      self.pub_mode.publish(mode)
-    elif ch == '9':
       # Enable Loop
       mode = UInt16()
-      mode.data = 0x111
+      mode.data = Mode.MODE_LOOP_ON
+      self.pub_mode.publish(mode)
+    elif ch == '9':
+      # Disable Loop
+      mode = UInt16()
+      mode.data = Mode.MODE_LOOP_OFF
       self.pub_mode.publish(mode)
     elif ch == '5':
       # Collsion inject
       mode = UInt16()
-      mode.data = 0x112
+      mode.data = Mode.MODE_COLLISION_INJECT
       self.pub_mode.publish(mode)
     elif ch == '6':
       # Beep
       mode = UInt16()
-      mode.data = 0x401
+      mode.data = Mode.MODE_SOUND_CLICK
       self.pub_mode.publish(mode)
     else:
       self.command = np.array([0, 0])

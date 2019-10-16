@@ -55,6 +55,7 @@ add_message_files(
     CuttingDiscStatus.msg
     Loop.msg
     LoopData.msg
+    Mode.msg
     MotorFeedback.msg
     MotorFeedbackDiffDrive.msg
     SensorStatus.msg
