@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   std_msgs
+  std_srvs
   tf
 )
 
@@ -83,7 +84,8 @@ generate_messages()
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES am_driver
-  CATKIN_DEPENDS am_driver geometry_msgs message_runtime nav_msgs roscpp sensor_msgs std_msgs tf
+  CATKIN_DEPENDS
+    am_driver geometry_msgs message_runtime nav_msgs roscpp sensor_msgs std_msgs std_srvs tf
 #  DEPENDS system_lib
 )
 
