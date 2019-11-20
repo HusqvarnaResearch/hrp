@@ -8,29 +8,30 @@
 #ifndef AUTOMOWER_SAFE_H
 #define AUTOMOWER_SAFE_H
 
-#include <ros/ros.h>
-#include <boost/shared_ptr.hpp>
-#include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Twist.h>
-#include <geometry_msgs/Point.h>
-#include <geometry_msgs/PointStamped.h>
-#include <nav_msgs/Odometry.h>
-#include <tf/transform_broadcaster.h>
-#include <am_driver/Loop.h>
-#include <am_driver/SensorStatus.h>
 #include <am_driver/BatteryStatus.h>
-#include <am_driver/WheelPower.h>
-#include <std_msgs/UInt16.h>
-#include <sensor_msgs/Imu.h>
-#include <sensor_msgs/Joy.h>
-#include <am_driver/WheelEncoder.h>
-#include <am_driver/WheelCurrent.h>
-#include <am_driver_safe/TifCmd.h>
-#include <am_driver_safe/turnOfLoopCmd.h>
+#include <am_driver/CurrentStatus.h>
+#include <am_driver/Loop.h>
 #include <am_driver/MotorFeedback.h>
 #include <am_driver/MotorFeedbackDiffDrive.h>
+#include <am_driver/SensorStatus.h>
+#include <am_driver/WheelCurrent.h>
+#include <am_driver/WheelEncoder.h>
+#include <am_driver/WheelPower.h>
+#include <am_driver_safe/TifCmd.h>
+#include <am_driver_safe/turnOfLoopCmd.h>
+#include <boost/shared_ptr.hpp>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Twist.h>
+#include <nav_msgs/Odometry.h>
+#include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Joy.h>
 #include <sensor_msgs/NavSatFix.h>
-#include <am_driver/CurrentStatus.h>
+#include <std_msgs/UInt16.h>
+#include <std_srvs/Empty.h>
+#include <tf/transform_broadcaster.h>
 
 #include <sys/select.h>
 
@@ -239,10 +240,13 @@ protected:
     ssize_t sendMessage(unsigned char *msg, size_t len, unsigned char *ansmsg, size_t maxAnsLength, bool retry);
 
     bool turnOffLoop(am_driver_safe::turnOfLoopCmd::Request& req,
-                                      am_driver_safe::turnOfLoopCmd::Response& res);
+                     am_driver_safe::turnOfLoopCmd::Response& res);
 
     bool executeTifCommand(am_driver_safe::TifCmd::Request& req,
-                                      am_driver_safe::TifCmd::Response& res);
+                           am_driver_safe::TifCmd::Response& res);
+
+    bool resetPid(std_srvs::Empty::Request& req,
+                  std_srvs::Empty::Response& res);
 
     double regulatePid(double current_vel, double wanted_vel);
     bool doSerialComTest();
@@ -258,6 +262,7 @@ protected:
     ros::NodeHandle nh;
 
     ros::ServiceServer tifCommandService;
+    ros::ServiceServer pidResetService;
     ros::ServiceServer turnOffLoopService;
     ros::Subscriber velocity_sub;
     ros::Subscriber power_sub;

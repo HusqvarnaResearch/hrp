@@ -236,6 +236,8 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, decision_making::RosE
     tifCommandService = nh.advertiseService("tif_command", &AutomowerSafe::executeTifCommand, this);
     ROS_INFO("Service /tif_command.");
 
+    pidResetService = nh.advertiseService("reset_pid", &AutomowerSafe::resetPid, this);
+
     // Initialize the intial pose
     robot_pose.pose.position.x = 0.0;
     robot_pose.pose.position.y = 0.0;
@@ -652,6 +654,13 @@ bool AutomowerSafe::executeTifCommand(am_driver_safe::TifCmd::Request& req,
     res.str =  strRes;
 
     return true;
+}
+
+bool AutomowerSafe::resetPid(std_srvs::Empty::Request &, std_srvs::Empty::Response &)
+{
+  leftWheelPid.Restart();
+  rightWheelPid.Restart();
+  return true;
 }
 
 std::string AutomowerSafe::loadJsonModel(std::string fileName)
